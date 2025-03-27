@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 @Entity
 public class Activo {
     @Id
+    @GeneratedValue
     private Integer id;
     private String nombre;
     private String tipo;
