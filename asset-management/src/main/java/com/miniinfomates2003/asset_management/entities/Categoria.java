@@ -3,6 +3,7 @@ package com.miniinfomates2003.asset_management.entities;
 import jakarta.persistence.*;
 
 import java.util.Objects;
+import java.util.Set;
 
 @Entity
 public class Categoria {
@@ -10,6 +11,13 @@ public class Categoria {
     @GeneratedValue
     private Integer id;
     private String nombre;
+    @ManyToMany
+    @JoinTable(
+            name = "activo_categoria",
+            joinColumns = @JoinColumn(name = "categoria_id"),
+            inverseJoinColumns = @JoinColumn(name = "activo_id")
+    )
+    private Set<Activo> activos;  // Relación con activos
 
     public Integer getId() {
         return id;
@@ -25,6 +33,14 @@ public class Categoria {
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
+    }
+
+    public Set<Activo> getActivos() {
+        return activos;
+    }
+
+    public void setActivos(Set<Activo> activos) {
+        this.activos = activos;
     }
 
     @Override

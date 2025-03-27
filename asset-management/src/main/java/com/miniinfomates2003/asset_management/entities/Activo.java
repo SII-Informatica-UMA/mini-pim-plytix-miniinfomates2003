@@ -9,12 +9,16 @@ import jakarta.persistence.*;
 public class Activo {
     @Id
     private Integer id;
-    private String nombre; 
+    private String nombre;
     private String tipo;
     private Integer tamanio;
     private String url;
 
     private Set<Integer> idProducto;
+
+    @ManyToMany(mappedBy = "activos")
+    private Set<Categoria> categorias;  // Relación bidireccional
+
     public Integer getId() {
         return id;
     }
@@ -61,6 +65,14 @@ public class Activo {
 
     public void setIdProducto(Set<Integer> idProducto) {
         this.idProducto = idProducto;
+    }
+
+    public Set<Categoria> getCategorias() {
+        return categorias;
+    }
+
+    public void setCategorias(Set<Categoria> categorias) {
+        this.categorias = categorias;
     }
 
     // hashCode y equals (para comparar objetos correctamente)
