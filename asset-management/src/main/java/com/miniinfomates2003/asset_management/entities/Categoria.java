@@ -1,4 +1,4 @@
-package main.java.com.miniinfomates2003.asset_management.entities;
+package com.miniinfomates2003.asset_management.entities;
 
 import jakarta.persistence.*;
 
