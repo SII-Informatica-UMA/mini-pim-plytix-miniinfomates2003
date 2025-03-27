@@ -2,6 +2,8 @@ package com.miniinfomates2003.asset_management.entities;
 
 import jakarta.persistence.*;
 
+import java.util.Objects;
+
 @Entity
 public class Categoria {
     @Id

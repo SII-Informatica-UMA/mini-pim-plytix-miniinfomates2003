@@ -1,5 +1,6 @@
 package com.miniinfomates2003.asset_management.entities;
 
+import java.util.Objects;
 import java.util.Set;
 
 import jakarta.persistence.*;
