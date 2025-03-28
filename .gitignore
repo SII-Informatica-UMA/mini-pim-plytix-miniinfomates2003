@@ -33,3 +33,6 @@ build/
 .vscode/
 
 arrancar_bd.txt
+
+### BD ###
+*.mv.db
