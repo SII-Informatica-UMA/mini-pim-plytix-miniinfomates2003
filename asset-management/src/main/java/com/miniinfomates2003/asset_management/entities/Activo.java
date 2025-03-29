@@ -10,8 +10,10 @@ public class Activo {
     @Id
     @GeneratedValue
     private Integer id;
+    @Column(nullable = false)
     private String nombre;
     private String tipo;
+    @Column(nullable = false)
     private Integer tamanio;
     private String url;
 

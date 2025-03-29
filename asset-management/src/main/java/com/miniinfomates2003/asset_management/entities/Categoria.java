@@ -10,6 +10,7 @@ public class Categoria {
     @Id
     @GeneratedValue
     private Integer id;
+    @Column(nullable = false)
     private String nombre;
     @ManyToMany
     @JoinTable(
