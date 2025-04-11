@@ -12,6 +12,9 @@ public class Categoria {
     private Integer id;
     @Column(nullable = false)
     private String nombre;
+    @Column(nullable = false)
+    private Integer idCuenta;
+
     @ManyToMany
     @JoinTable(
             name = "activo_categoria",

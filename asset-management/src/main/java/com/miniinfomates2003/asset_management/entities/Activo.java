@@ -19,6 +19,7 @@ public class Activo {
     @ElementCollection
     private Set<Integer> idProductos;
 
+
     @ManyToMany(mappedBy = "activos")
     private Set<Categoria> categorias;  // Relación bidireccional
 
