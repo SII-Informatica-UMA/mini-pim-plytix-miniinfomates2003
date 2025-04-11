@@ -16,8 +16,8 @@ public class Activo {
     @Column(nullable = false)
     private Integer tamanio;
     private String url;
-
-    private Set<Integer> idProducto;
+    @ElementCollection
+    private Set<Integer> idProductos;
 
     @ManyToMany(mappedBy = "activos")
     private Set<Categoria> categorias;  // Relación bidireccional
@@ -62,12 +62,12 @@ public class Activo {
         this.url = url;
     }
 
-    public Set<Integer> getIdProducto() {
-        return idProducto;
+    public Set<Integer> getIdProductos() {
+        return idProductos;
     }
 
-    public void setIdProducto(Set<Integer> idProducto) {
-        this.idProducto = idProducto;
+    public void setIdProducto(Set<Integer> idProductos) {
+        this.idProductos = idProductos;
     }
 
     public Set<Categoria> getCategorias() {
@@ -81,7 +81,7 @@ public class Activo {
     // hashCode y equals (para comparar objetos correctamente)
     @Override
     public int hashCode() {
-        return Objects.hash(id, nombre, tipo, tamanio, url, idProducto);
+        return Objects.hash(id, nombre, tipo, tamanio, url, idProductos);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class Activo {
                Objects.equals(tipo, activo.tipo) &&
                Objects.equals(tamanio, activo.tamanio) &&
                Objects.equals(url, activo.url) &&
-               Objects.equals(idProducto, activo.idProducto);
+               Objects.equals(idProductos, activo.idProductos);
     }
 
     // toString (para representación en texto)
@@ -106,7 +106,7 @@ public class Activo {
                ", tipo='" + tipo + '\'' +
                ", tamanio=" + tamanio +
                ", url='" + url + '\'' +
-               ", idProducto=" + idProducto +
+               ", idProductos=" + idProductos +
                '}';
     }
 }
