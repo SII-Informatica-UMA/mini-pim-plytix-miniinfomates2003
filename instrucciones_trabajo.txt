@@ -1,0 +1,14 @@
+En la pestaña Issues del repositorio están todas las tareas que tenemos que hacer para la entrega 2 (30/4), tenemos que repartirlas todavía.
+El proceso para hacer una tarea es el siguiente (recomiendo instalar GitKraken, facilita mucho el trabajo con ramas y es muy fácil de usar, cualquier duda preguntadme):
+1) Crear una nueva rama con el mismo nombre del Issue que vamos a implementar.
+2) Trabajar en esa rama de manera normal haciendo commits.
+3) Cuando ya esté lista la tarea y la queráis mergear a main crear una PR(Pull Request) de la siguiente manera:
+-Desde la página del repo en GitHub ir a la pestaña Pull Request.
+-Seleccionar new Pull Request
+-Seleccionar la rama en la que hemos estado trabajando.
+-Le damos a Create pull request
+-IMPORTANTE: Añadimos el título que coincida con el del issue y al final del título añadimos Closes #numero-issue (el número del Issue que hemos implementado).
+-En asignees añadimos a los otros tres miembros del grupo (para que revisen nuestra PR y vean si hay algún fallo o falta algo)
+-El resto de miembros que no han hecho esa parte pueden hacer comentarios o sugerencias en la PR antes de mergearla.
+-Si no hay comentarios ni problemas se mergea a main y listo, ya está implementado el Issue y se cierra solo :)
+4) Borramos la rama en el repo local y en el remoto (con GitKraken es muy sencillo, click derecho en la rama y delete nombre-rama y delete origin/nombre-rama
