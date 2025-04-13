@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: plytix-DB-container
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: plytix-DB
+      MYSQL_USER: plytix
+      MYSQL_PASSWORD: plytix
+    ports:
+      - "3306:3306"
+    volumes:
+      - plytix-mysql-data:/var/lib/mysql
+    restart: unless-stopped
+
+  # Si quisiéramos añadir la aplicación Spring:
+  # spring-app:
+  #   build: .                 # Construye desde el Dockerfile en el directorio actual
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - mysql                # Indica que mysql debe iniciar primero
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/testdb
+
+volumes:
+  plytix-mysql-data:
