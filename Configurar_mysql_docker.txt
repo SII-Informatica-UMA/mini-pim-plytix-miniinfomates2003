@@ -88,3 +88,24 @@ services:
 
 volumes:
   plytix-mysql-data:
+
+
+6) Comandos básicos de Docker Compose
+
+# Iniciar todos los servicios definidos (en modo detached)
+docker-compose up -d
+
+# Detener todos los servicios
+docker-compose down
+
+# Ver logs de todos los servicios
+docker-compose logs
+
+# Ver logs de un servicio específico
+docker-compose logs mysql
+
+# Reiniciar un servicio específico
+docker-compose restart mysql
+
+# Ver el estado de los servicios
+docker-compose ps
