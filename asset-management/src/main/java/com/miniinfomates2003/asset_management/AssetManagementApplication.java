@@ -9,14 +9,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.util.Set;
 
 @SpringBootApplication
-public class AssetManagementApplication implements CommandLineRunner {
+public class AssetManagementApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(AssetManagementApplication.class, args);
-	}
-
-	@Override
-	public void run(String... args) throws Exception {
-		System.out.println("La aplicación ha arrancado y el esquema DDL se ha generado.");
 	}
 }
