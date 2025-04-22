@@ -2,6 +2,8 @@
 
 
 2) Crear el contenedor para la BD:
+*IMPORTANTE: no ejecutar el siguiente comando, serviría para crear el contenedor pero lo vamos a hacer con docker-compose que es más fácil para controlarlo luego:
+
 docker run --name plytix-DB-container -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=plytix-DB -e MYSQL_USER=plytix -e MYSQL_PASSWORD=plytix -p 3306:3306 -d mysql:8
 
 --name plytix-DB
@@ -59,8 +61,6 @@ spring.jpa.properties.jakarta.persistence.schema-generation.scripts.create-targe
 
 5) Crear un fichero docker-compose-yml para controlar el contenedor más fácilmente en la raíz del proyecto:
 
-version: '3.8'
-
 services:
   mysql:
     image: mysql:8
@@ -92,10 +92,25 @@ volumes:
 
 6) Comandos básicos de Docker Compose
 
-# Iniciar todos los servicios definidos (en modo detached)
+# Iniciar todos los servicios definidos en el contenedor
+(en modo detached)
 docker-compose up -d
 
-# Detener todos los servicios
+# Parar un contenedor (docker compose stop):
+El contenedor se detiene pero permanece en el sistema.
+Estado de los datos:
+-Se conservan todos los datos en volúmenes (en tu caso, plytix-mysql-data)
+-Se conservan los datos internos del contenedor (archivos creados dentro del contenedor no montados en volúmenes)
+Uso posterior: Puedes reiniciar el mismo contenedor con docker compose start
+
+# Eliminar el contenedor
+El contenedor se elimina completamente del sistema.
+Estado de los datos:
+-Con docker compose down: Los datos en volúmenes nombrados se conservan por defecto (salvo que uses --volumes)
+-Con docker compose down --volumes: Se pierden todos los datos en volúmenes
+-Se pierden todos los datos internos del contenedor que no estén en volúmenes
+-Con docker compose rm -v: Se pierden los volúmenes anónimos asociados
+Uso posterior: Necesitas crear un nuevo contenedor con docker compose up
 docker-compose down
 
 # Ver logs de todos los servicios
