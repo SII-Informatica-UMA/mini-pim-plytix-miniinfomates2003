@@ -18,7 +18,8 @@ public class Activo {
     private String url;
     @ElementCollection
     private Set<Integer> idProductos;
-
+    @Column(nullable = false)
+    private Integer idCuenta;
 
     @ManyToMany(mappedBy = "activos")
     private Set<Categoria> categorias;  // Relación bidireccional
