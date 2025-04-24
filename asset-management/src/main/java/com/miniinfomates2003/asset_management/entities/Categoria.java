@@ -1,16 +1,18 @@
 package com.miniinfomates2003.asset_management.entities;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.Set;
 
-@Entity
-@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 @EqualsAndHashCode
 @ToString(exclude = "activos")
+@Builder
+@Entity
 public class Categoria {
     @Id
     @GeneratedValue

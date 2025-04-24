@@ -4,7 +4,8 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class CategoriaDTO {
-    private Long id;
+    private Integer id;
     private String nombre;
 }

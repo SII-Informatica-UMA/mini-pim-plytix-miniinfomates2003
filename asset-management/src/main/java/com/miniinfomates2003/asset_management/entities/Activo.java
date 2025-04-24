@@ -3,14 +3,16 @@ package com.miniinfomates2003.asset_management.entities;
 import java.util.Set;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.*;
 
-@Entity
-@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
 @EqualsAndHashCode(of = {"id", "nombre", "tipo", "tamanio", "url", "idProductos"})
 @ToString(exclude = "categorias")
+@Builder
+@Entity
 public class Activo {
     @Id
     @GeneratedValue
@@ -26,6 +28,10 @@ public class Activo {
 
     private String url;
 
+    @ManyToMany(mappedBy = "activos")
+    @EqualsAndHashCode.Exclude
+    private Set<Categoria> categorias;  // Relación bidireccional
+
     @ElementCollection
     @EqualsAndHashCode.Exclude
     private Set<Integer> idProductos;
@@ -33,8 +39,4 @@ public class Activo {
     @Column(nullable = false)
     @EqualsAndHashCode.Exclude
     private Integer idCuenta;
-
-    @ManyToMany(mappedBy = "activos")
-    @EqualsAndHashCode.Exclude
-    private Set<Categoria> categorias;  // Relación bidireccional
 }

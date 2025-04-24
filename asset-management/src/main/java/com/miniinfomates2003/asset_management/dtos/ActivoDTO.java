@@ -9,11 +9,11 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class ActivoDTO {
-    private Long id;
+    private Integer id;
     private String nombre;
     private String tipo;
     private Integer tamanio;
     private String url;
-    private List<CategoriaDTO> categorias = new ArrayList<>();
-    private List<Long> productos = new ArrayList<>();
+    private List<CategoriaDTO> categorias;
+    private List<Integer> productos;
 }
