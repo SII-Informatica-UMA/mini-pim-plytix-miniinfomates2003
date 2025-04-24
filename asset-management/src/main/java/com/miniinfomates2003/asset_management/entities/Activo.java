@@ -9,7 +9,6 @@ import lombok.*;
 @NoArgsConstructor
 @Getter
 @Setter
-@EqualsAndHashCode(of = {"id", "nombre", "tipo", "tamanio", "url", "idProductos"})
 @ToString(exclude = "categorias")
 @Builder
 @Entity

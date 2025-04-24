@@ -96,7 +96,7 @@ volumes:
 (en modo detached)
 docker-compose up -d
 
-# Parar un contenedor (docker compose stop):
+# Parar un contenedor (docker-compose stop):
 El contenedor se detiene pero permanece en el sistema.
 Estado de los datos:
 -Se conservan todos los datos en volúmenes (en tu caso, plytix-mysql-data)
@@ -106,10 +106,10 @@ Uso posterior: Puedes reiniciar el mismo contenedor con docker compose start
 # Eliminar el contenedor
 El contenedor se elimina completamente del sistema.
 Estado de los datos:
--Con docker compose down: Los datos en volúmenes nombrados se conservan por defecto (salvo que uses --volumes)
--Con docker compose down --volumes: Se pierden todos los datos en volúmenes
+-Con docker-compose down: Los datos en volúmenes nombrados se conservan por defecto (salvo que uses --volumes)
+-Con docker-compose down --volumes: Se pierden todos los datos en volúmenes
 -Se pierden todos los datos internos del contenedor que no estén en volúmenes
--Con docker compose rm -v: Se pierden los volúmenes anónimos asociados
+-Con docker-compose rm -v: Se pierden los volúmenes anónimos asociados
 Uso posterior: Necesitas crear un nuevo contenedor con docker compose up
 docker-compose down
 
