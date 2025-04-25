@@ -1,8 +1,11 @@
 package com.miniinfomates2003.asset_management.controllers;
 import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
 import com.miniinfomates2003.asset_management.entities.Categoria;
+import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 import com.miniinfomates2003.asset_management.services.CategoriaService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +29,15 @@ public class CategoriaController {
     @GetMapping
     public ResponseEntity<List<CategoriaDTO>> obtenerCategorias(@RequestParam(required = false) Integer idCuenta,
                                                 @RequestParam(required = false) Integer idCategoria) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElse(null);
+        if (usuario == null) {
+            // Si no hay usuario autenticado, devolver un 401 Unauthorized
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header("Error-Message", "Credenciales no válidas o faltantes")
+                    .build();
+        }
+
         if (idCuenta != null) {
             return ResponseEntity.ok(categoriaService.obtenerPorCuenta(idCuenta).stream()
                     .map(Mapper::toDTO)
