@@ -1,16 +1,15 @@
 package com.miniinfomates2003.asset_management.controllers;
 import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
 import com.miniinfomates2003.asset_management.entities.Categoria;
+import com.miniinfomates2003.asset_management.entities.Usuario;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 import com.miniinfomates2003.asset_management.services.CategoriaService;
+import com.miniinfomates2003.asset_management.services.CuentaService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,15 +19,18 @@ import java.util.stream.Collectors;
 @RequestMapping("/categoria-activo")
 public class CategoriaController {
     private final CategoriaService categoriaService;
+    private final CuentaService cuentaService;
 
     @Autowired
-    public CategoriaController(CategoriaService categoriaService) {
+    public CategoriaController(CategoriaService categoriaService, CuentaService cuentaService) {
         this.categoriaService = categoriaService;
+        this.cuentaService = cuentaService;
     }
 
     @GetMapping
     public ResponseEntity<List<CategoriaDTO>> obtenerCategorias(@RequestParam(required = false) Integer idCuenta,
-                                                @RequestParam(required = false) Integer idCategoria) {
+                                                @RequestParam(required = false) Integer idCategoria,
+                                                @RequestHeader("Authorization") String jwtToken) {
         var usuario = SecurityConfguration.getAuthenticatedUser()
                 .orElse(null);
         if (usuario == null) {
@@ -39,6 +41,12 @@ public class CategoriaController {
         }
 
         if (idCuenta != null) {
+            Optional<List<Usuario>> usuariosAsociadosOpt = cuentaService.getUsuariosAsociadosACuenta(idCuenta, jwtToken);
+            if (usuariosAsociadosOpt.isEmpty() || usuariosAsociadosOpt.get().stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .header("Error-Message", "Sin permisos suficientes")
+                        .build();
+            }
             return ResponseEntity.ok(categoriaService.obtenerPorCuenta(idCuenta).stream()
                     .map(Mapper::toDTO)
                     .collect(Collectors.toList()));
