@@ -1,6 +1,7 @@
 package com.miniinfomates2003.asset_management.services;
 
 import com.miniinfomates2003.asset_management.entities.Usuario;
+import com.miniinfomates2003.asset_management.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
@@ -17,17 +18,31 @@ public class CuentaService {
     @Value("${baseURL}")
     private String baseURL;
 
+    private JwtUtil jwtUtil;
+    private Usuario usuarioApp;
+
     private RestTemplate restTemplate;
-    public CuentaService(RestTemplate restTemplate) {
+
+
+    public CuentaService(RestTemplate restTemplate, JwtUtil jwtUtil) {
         this.restTemplate = restTemplate;
+        this.jwtUtil = jwtUtil;
+        this.usuarioApp = Usuario.builder()
+                .id(-1L)
+                .nombre("Microservicio")
+                .role(Usuario.Rol.ADMINISTRADOR)
+                .build();
     }
 
-    public Optional<List<Usuario>> getUsuariosAsociadosACuenta(Integer idCuenta, String jwtToken) {
+    public Optional<List<Usuario>> getUsuariosAsociadosACuenta(Integer idCuenta) {
         var uri = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/{idCuenta}/usuarios")
                 .buildAndExpand(idCuenta)
                 .toUri();
+
+        var appJwtToken = jwtUtil.generateToken(usuarioApp);
+
         var peticion = RequestEntity.get(uri)
-                .header("Authorization", jwtToken)
+                .header("Authorization", "Bearer " + appJwtToken)
                 .build();
         try {
             return Optional.ofNullable(this.restTemplate.exchange(
