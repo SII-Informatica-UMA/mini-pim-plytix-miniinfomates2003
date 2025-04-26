@@ -1,18 +1,21 @@
 package com.miniinfomates2003.asset_management.services;
 
+import com.miniinfomates2003.asset_management.controllers.Mapper;
+import com.miniinfomates2003.asset_management.dtos.ActivoDTO;
 import com.miniinfomates2003.asset_management.entities.Activo;
+import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
 import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
 import com.miniinfomates2003.asset_management.repositories.ActivoRepository;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -25,6 +28,42 @@ public class ActivoService {
     public ActivoService(ActivoRepository activoRepository, CuentaService cuentaService) {
         this.activoRepository = activoRepository;
         this.cuentaService = cuentaService;
+    }
+
+    public ActivoDTO updateActivo(Integer idActivo, ActivoDTO activoDTO) {
+        Activo activo = activoRepository.findById(idActivo)
+                .orElseThrow(() -> new RuntimeException("Activo not found"));
+
+        // Updates the fields of the Activo entity with the values from ActivoDTO
+        activo.setNombre(activoDTO.getNombre());
+        activo.setTipo(activoDTO.getTipo());
+        activo.setTamanio(activoDTO.getTamanio());
+        activo.setUrl(activoDTO.getUrl());
+
+        Set<Categoria> updatedCategorias = activoDTO.getCategorias().stream()
+                .map(Mapper::toEntity)
+                .collect(Collectors.toSet());
+
+        activo.setCategorias(updatedCategorias);
+        activo.setIdProductos(new HashSet<>(activoDTO.getProductos()));
+
+        activoRepository.save(activo);
+
+        return Mapper.toDTO(activo);
+    }
+
+    public boolean hasPermissionToUpdate(Integer idActivo) {
+        try {
+            var usuario = SecurityConfguration.getAuthenticatedUser()
+                    .orElseThrow(TokenMissingException::new);
+
+            Activo activo = activoRepository.findById(idActivo)
+                    .orElseThrow(() -> new RuntimeException("Activo not found"));
+
+            return activo.getIdCuenta().toString().equals(usuario.getUsername());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public Activo aniadirActivo(Activo activo, Integer idCuenta) {
@@ -57,4 +96,5 @@ public class ActivoService {
         activo.setId(null);
         return activoRepository.save(activo);
     }
+
 }

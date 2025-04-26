@@ -5,9 +5,9 @@ import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
 import com.miniinfomates2003.asset_management.services.ActivoService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -21,6 +21,18 @@ public class ActivoController {
     @Autowired
     public ActivoController(ActivoService activoService) {
         this.activoService = activoService;
+    }
+
+    @PutMapping("/{idActivo}")
+    public ResponseEntity<ActivoDTO> updateActivo(@PathVariable(required = true) Integer idActivo,
+                                                  @RequestBody(required = true) ActivoDTO activoDTO) {
+
+        if (!activoService.hasPermissionToUpdate(idActivo)) {
+            return ResponseEntity.status(403).build(); // Forbidden
+        }
+
+        ActivoDTO activoActualizado = activoService.updateActivo(idActivo, activoDTO);
+        return ResponseEntity.ok(activoActualizado);
     }
 
     @PostMapping
@@ -41,9 +53,5 @@ public class ActivoController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
         }
-    }
-    @PutMapping
-    public void updateActivo() {
-
     }
 }
