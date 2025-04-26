@@ -1,6 +1,7 @@
 package com.miniinfomates2003.asset_management.controllers;
 
 import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
+import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
 import com.miniinfomates2003.asset_management.services.CategoriaService;
 import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
@@ -25,8 +26,7 @@ public class CategoriaController {
 
     @GetMapping
     public ResponseEntity<?> obtenerCategorias(@RequestParam(required = false) Integer idCuenta,
-                                               @RequestParam(required = false) Integer idCategoria,
-                                               @RequestHeader("Authorization") String jwtToken) {
+                                               @RequestParam(required = false) Integer idCategoria) {
         try {
             if (idCuenta != null) {
                 var categorias = categoriaService.obtenerPorCuenta(idCuenta)
@@ -47,6 +47,8 @@ public class CategoriaController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (NoAccessException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
         }
