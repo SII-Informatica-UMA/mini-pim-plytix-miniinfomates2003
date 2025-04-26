@@ -1,5 +1,6 @@
 package com.miniinfomates2003.asset_management.services;
 
+import com.miniinfomates2003.asset_management.entities.Cuenta;
 import com.miniinfomates2003.asset_management.entities.Usuario;
 import com.miniinfomates2003.asset_management.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +52,24 @@ public class CuentaService {
             ).getBody());
         } catch (Exception e) {
             //e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Integer> getMaxNumActivosPermitidos(Integer idCuenta) {
+        var uri = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
+                .queryParam("idCuenta", idCuenta)
+                .build()
+                .toUri();
+        var appJwtToken = jwtUtil.generateToken(usuarioApp);
+
+        var peticion = RequestEntity.get(uri)
+                .header("Authorization", "Bearer " + appJwtToken)
+                .build();
+        try {
+            return Optional.ofNullable(this.restTemplate.exchange(peticion, Cuenta[].class).getBody()[0].getPlan().getMaxActivos());
+        }
+        catch (Exception e) {
             return Optional.empty();
         }
     }
