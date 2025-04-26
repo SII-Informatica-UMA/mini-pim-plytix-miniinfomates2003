@@ -27,13 +27,16 @@ public class CategoriaService {
     }
 
     public Optional<Categoria> obtenerPorCategoria(Integer idCategoria) {
+
         var usuario = SecurityConfguration.getAuthenticatedUser()
                 .orElseThrow(TokenMissingException::new);
         Optional<Categoria> categoria = categoriaRepository.findById(idCategoria);
+        // Comprobar que exista la categoría
         if (categoria.isEmpty())
         {
             throw new NotFoundException();
         }
+        // Comprobar que el usuario tenga acceso a la cuenta a la que pertenece la categoria
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoria.get().getIdCuenta())
                 .orElseThrow(NoAccessException::new);
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
@@ -43,6 +46,7 @@ public class CategoriaService {
     }
 
     public List<Categoria> obtenerPorCuenta(Integer idCuenta) {
+        // Comprobar que el usuario tenga acceso a la cuenta de la que quiere obtener la categoria
         var usuario = SecurityConfguration.getAuthenticatedUser()
                 .orElseThrow(TokenMissingException::new);
 
