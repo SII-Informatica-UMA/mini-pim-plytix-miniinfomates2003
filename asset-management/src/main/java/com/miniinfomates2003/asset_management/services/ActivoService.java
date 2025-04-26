@@ -97,4 +97,18 @@ public class ActivoService {
         return activoRepository.save(activo);
     }
 
+    public void deleteActivo(Integer idActivo) {
+        Activo activo = activoRepository.findById(idActivo)
+                .orElseThrow(() -> new RuntimeException("Activo not found"));
+
+        // Comprobar que el usuario tenga acceso a la cuenta en la que quiere eliminar el Activo
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+
+        if (!activo.getIdCuenta().toString().equals(usuario.getUsername())) {
+            throw new NoAccessException();
+        }
+
+        activoRepository.delete(activo);
+    }
 }
