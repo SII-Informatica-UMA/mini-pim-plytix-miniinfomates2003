@@ -22,6 +22,9 @@ public class SecurityConfguration {
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
 
+    @Autowired
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -35,14 +38,17 @@ public class SecurityConfguration {
                 .httpBasic(httpBasic ->httpBasic.disable())
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
-                                .requestMatchers("/categoria-activo").permitAll()
                                 .anyRequest().authenticated()
                 )
 
                 .sessionManagement(sessionManagement ->
                         sessionManagement
                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
+                )
+                .anonymous(anonymous -> anonymous.disable())
+                .exceptionHandling(exceptionHandling ->
+                                exceptionHandling
+                                        .authenticationEntryPoint(customAuthenticationEntryPoint)); // Usa el punto de entrada personalizado;
         http.addFilterAfter(jwtRequestFilter, LogoutFilter.class);
         return http.build();
     }
