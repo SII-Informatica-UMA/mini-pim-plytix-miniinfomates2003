@@ -126,6 +126,18 @@ public class ActivoService {
         Activo activo = activoRepository.findById(idActivo)
                 .orElseThrow(() -> new RuntimeException("Activo not found"));
 
+        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+            for (Categoria categoria : activo.getCategorias()) {
+                Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
+                        .orElseThrow(NotFoundException::new);
+
+                if (managedCategoria.getActivos() != null) {
+                    managedCategoria.getActivos().remove(activo);
+                    categoriaRepository.save(managedCategoria);
+                }
+            }
+        }
+
         activoRepository.delete(activo);
     }
 }
