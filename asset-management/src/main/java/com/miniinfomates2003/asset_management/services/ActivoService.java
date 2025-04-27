@@ -31,10 +31,12 @@ public class ActivoService {
     public ActivoService(ActivoRepository activoRepository, CuentaService cuentaService,
                          CategoriaRepository categoriaRepository) {
         this.activoRepository = activoRepository;
+        this.categoriaRepository = categoriaRepository;
         this.cuentaService = cuentaService;
         this.categoriaRepository = categoriaRepository;
     }
 
+    @Transactional
     public ActivoDTO updateActivo(Integer idActivo, ActivoDTO activoDTO) {
         Activo activo = activoRepository.findById(idActivo)
                 .orElseThrow(() -> new RuntimeException("Activo not found"));
@@ -50,9 +52,22 @@ public class ActivoService {
                 .collect(Collectors.toSet());
 
         activo.setCategorias(updatedCategorias);
-        activo.setIdProductos(new HashSet<>(activoDTO.getProductos()));
 
-        activoRepository.save(activo);
+        if(activo.getCategorias() != null && !activo.getCategorias().isEmpty()){
+            for(Categoria categoria : activo.getCategorias()) {
+                Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
+                        .orElseThrow(NotFoundException::new);
+
+                if (managedCategoria.getActivos() == null) {
+                    managedCategoria.setActivos(new HashSet<>());
+                }
+
+                managedCategoria.getActivos().add(activo);
+                categoriaRepository.save(managedCategoria);
+            }
+        }
+
+        activo.setIdProductos(new HashSet<>(activoDTO.getProductos()));
 
         return Mapper.toDTO(activo);
     }
@@ -125,5 +140,24 @@ public class ActivoService {
             }
         }
         return savedActivo;
+    }
+
+    public void deleteActivo(Integer idActivo) {
+        Activo activo = activoRepository.findById(idActivo)
+                .orElseThrow(() -> new RuntimeException("Activo not found"));
+
+        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+            for (Categoria categoria : activo.getCategorias()) {
+                Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
+                        .orElseThrow(NotFoundException::new);
+
+                if (managedCategoria.getActivos() != null) {
+                    managedCategoria.getActivos().remove(activo);
+                    categoriaRepository.save(managedCategoria);
+                }
+            }
+        }
+
+        activoRepository.delete(activo);
     }
 }
