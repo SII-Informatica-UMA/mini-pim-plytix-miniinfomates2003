@@ -36,12 +36,12 @@ public class ActivoController {
     }
 
     @DeleteMapping("/{idActivo}")
-    public ResponseEntity<Void> deleteActivo(@PathVariable Integer idActivo) {
+    public ResponseEntity<Void> deleteActivo(@PathVariable(required = true) Integer idActivo) {
         if (!activoService.hasPermissionToUpdate(idActivo)) {
             return ResponseEntity.status(403).build(); // Forbidden
         }
         activoService.deleteActivo(idActivo);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping
