@@ -31,7 +31,6 @@ public class ActivoService {
     public ActivoService(ActivoRepository activoRepository, CuentaService cuentaService,
                          CategoriaRepository categoriaRepository) {
         this.activoRepository = activoRepository;
-        this.categoriaRepository = categoriaRepository;
         this.cuentaService = cuentaService;
         this.categoriaRepository = categoriaRepository;
     }
