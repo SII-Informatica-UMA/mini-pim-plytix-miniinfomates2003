@@ -28,10 +28,12 @@ public class ActivoService {
     private final CuentaService cuentaService;
 
     @Autowired
-    public ActivoService(ActivoRepository activoRepository, CategoriaRepository categoriaRepository, CuentaService cuentaService) {
+    public ActivoService(ActivoRepository activoRepository, CuentaService cuentaService,
+                         CategoriaRepository categoriaRepository) {
         this.activoRepository = activoRepository;
         this.categoriaRepository = categoriaRepository;
         this.cuentaService = cuentaService;
+        this.categoriaRepository = categoriaRepository;
     }
 
     @Transactional
@@ -119,7 +121,25 @@ public class ActivoService {
             activo.setIdProductos(new HashSet<>());
         }
         activo.setId(null);
-        return activoRepository.save(activo);
+        Activo savedActivo = activoRepository.save(activo);
+
+        // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
+        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+            for (Categoria categoria : activo.getCategorias()) {
+                // Aquí es necesario cargar la categoría desde la base de datos
+                // para poder modificar su colección de activos
+                Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
+                        .orElseThrow(NotFoundException::new);
+
+                if (managedCategoria.getActivos() == null) {
+                    managedCategoria.setActivos(new HashSet<>());
+                }
+
+                managedCategoria.getActivos().add(savedActivo);
+                categoriaRepository.save(managedCategoria);
+            }
+        }
+        return savedActivo;
     }
 
     public void deleteActivo(Integer idActivo) {
