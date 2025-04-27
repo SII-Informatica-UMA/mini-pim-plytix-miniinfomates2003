@@ -60,8 +60,15 @@ public class ActivoService {
             Activo activo = activoRepository.findById(idActivo)
                     .orElseThrow(() -> new RuntimeException("Activo not found"));
 
-            return activo.getIdCuenta().toString().equals(usuario.getUsername());
-        } catch (Exception e) {
+            var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta())
+                    .orElseThrow(NoAccessException::new);
+
+            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+                throw new NoAccessException();
+            }
+
+            return true;
+        } catch (NoAccessException | TokenMissingException e) {
             return false;
         }
     }
@@ -100,14 +107,6 @@ public class ActivoService {
     public void deleteActivo(Integer idActivo) {
         Activo activo = activoRepository.findById(idActivo)
                 .orElseThrow(() -> new RuntimeException("Activo not found"));
-
-        // Comprobar que el usuario tenga acceso a la cuenta en la que quiere eliminar el Activo
-        var usuario = SecurityConfguration.getAuthenticatedUser()
-                .orElseThrow(TokenMissingException::new);
-
-        if (!activo.getIdCuenta().toString().equals(usuario.getUsername())) {
-            throw new NoAccessException();
-        }
 
         activoRepository.delete(activo);
     }
