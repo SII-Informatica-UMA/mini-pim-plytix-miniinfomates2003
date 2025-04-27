@@ -60,8 +60,15 @@ public class ActivoService {
             Activo activo = activoRepository.findById(idActivo)
                     .orElseThrow(() -> new RuntimeException("Activo not found"));
 
-            return activo.getIdCuenta().toString().equals(usuario.getUsername());
-        } catch (Exception e) {
+            var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta())
+                    .orElseThrow(NoAccessException::new);
+
+            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+                throw new NoAccessException();
+            }
+
+            return true;
+        } catch (NoAccessException | TokenMissingException e) {
             return false;
         }
     }
