@@ -60,36 +60,32 @@ public class CategoriaService {
         return categoriaRepository.findByIdCuenta(idCuenta);
     }
 
-    public boolean hasPermissionToUpdate(Integer idCategoria) {
-        try {
-            // Obtenemos el usuario autenticado
-            var usuario = SecurityConfguration.getAuthenticatedUser()
-                    .orElseThrow(TokenMissingException::new);
+    public Categoria updateCategoria(Integer idCategoria, Categoria categoria) {
+        // Obtenemos el usuario autenticado
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
 
-            // Extraemos la categoría con id idCategoria
-            Categoria categoria = categoriaRepository.findById(idCategoria);
+        // Extraemos la categoría con id idCategoria
+        Optional<Categoria> categoria = categoriaRepository.findById(idCategoria);
 
-            // Comprobamos si existe una categoria cuyo id sea idCategoria
-            if (categoria.isEmpty()) {
-                // No existe una categoria cuyo id sea idCategoria
-                throw new RuntimeException("No existe una categoría cuyo id sea " + idCategoria + ".");
+        // Comprobamos si existe una categoria cuyo id sea idCategoria
+        if (categoria.isEmpty()) {
+            // No existe una categoria cuyo id sea idCategoria
+            throw new NotFoundException();
+        } else {
+            // Existe una categoria cuyo id sea idCategoria
+            // Extraemos los usuarios asociados a la cuenta de la categoría
+            var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta())
+                    .orElseThrow(NoAccessException::new);
+
+            // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
+            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+                // El usuario autenticado no se encuentra en la lista de usuarios con permisos
+                throw new NoAccessException();
             } else {
-                // Existe una categoria cuyo id sea idCategoria
-                // Extraemos los usuarios asociados a la cuenta de la categoría
-                var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta())
-                        .orElseThrow(NoAccessException::new);
-
-                // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
-                if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
-                    // El usuario autenticado no se encuentra en la lista de usuarios con permisos
-                    throw new NoAccessException();
-                } else {
-                    // El usuario autenticado se encuentra en la lista de usuarios con permisos
-                    return true;
-                }
+                // El usuario autenticado se encuentra en la lista de usuarios con permisos
+                return categoriaRepository.save(categoria);
             }
-        } catch (NoAccessException | TokenMissingException e) {
-            return false;
         }
     }
 }

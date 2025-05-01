@@ -57,28 +57,23 @@ public class CategoriaController {
     @PutMapping("{idCategoria}")
     public ResponseEntity<CategoriaDTO> updateCategoria(@PathVariable(required = true) Integer idCategoria,
                                                         @RequestBody(required = true) CategoriaDTO categoriaDTO) {
-        ResponseEntity responseEntity;
+        try {
+            // Extraemos la entidad de CategoriaDTO
+            Categoria categoria = Mapper.toEntity(categoria);
 
-        // Comprobamos si existe una categoria cuyo id sea idCategoria
-        if (!categoriaService.existsById(idCategoria)) {
-            // No existe una categoria cuyo id sea idCategoria
-            // Se debe devolver 404 con un mensaje de error
-            String error = "La categoría con ID " + idCategoria + " no existe.";
+            // Actualizamos si id para que coincida con el de la categoria existente
+            categoria.setId(idCategoria);
 
-            responseEntity = ResponseEntity.status(404).body(error);
-        } else {
-            // Existe una cuenta cuyo id sea idCategoria
-            // Comprobamos si el usuario cuenta con los permisos de actualizacion
-            if (!categoriaService.hasPermissionToUpdate(idCategoria)) {
-                // El usuario no cuenta con los permisos de actualizacion
-                // Se debe devolver 403 con un mensaje de error
-                String error = "Sin permisos suficientes.";
+            // Guardamos la categoria ya actualizada
+            CategoriaDTO categoriaActualizada = Mapper.toDTO(categoriaService.updateCategoria(idCategoria, categoria));
 
-                responseEntity = ResponseEntity.status(403).body(error).build();
-            } else {
-                // El usuario cuenta con los permisos de actualizacion
-                responseEntity = ResponseEntity.ok().body(categoriaDTO);
-            }
+            return ResponseEntity.ok().body(categoriaActualizada);
+        } catch (NotFoundException nfe) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (NoAccessException nae) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
 
         return responseEntity;
