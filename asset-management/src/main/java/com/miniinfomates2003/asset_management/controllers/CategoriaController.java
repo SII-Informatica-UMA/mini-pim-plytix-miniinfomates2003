@@ -1,6 +1,7 @@
 package com.miniinfomates2003.asset_management.controllers;
 
 import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
+import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
 import com.miniinfomates2003.asset_management.services.CategoriaService;
 import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
@@ -59,7 +60,7 @@ public class CategoriaController {
                                                         @RequestBody(required = true) CategoriaDTO categoriaDTO) {
         try {
             // Extraemos la entidad de CategoriaDTO
-            Categoria categoria = Mapper.toEntity(categoria);
+            Categoria categoria = Mapper.toEntity(categoriaDTO);
 
             // Actualizamos si id para que coincida con el de la categoria existente
             categoria.setId(idCategoria);
@@ -75,7 +76,5 @@ public class CategoriaController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-
-        return responseEntity;
     }
 }

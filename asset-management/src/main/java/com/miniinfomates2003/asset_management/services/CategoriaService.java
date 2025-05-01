@@ -66,16 +66,16 @@ public class CategoriaService {
                 .orElseThrow(TokenMissingException::new);
 
         // Extraemos la categoría con id idCategoria
-        Optional<Categoria> categoria = categoriaRepository.findById(idCategoria);
+        Optional<Categoria> categoriaActual = categoriaRepository.findById(idCategoria);
 
         // Comprobamos si existe una categoria cuyo id sea idCategoria
-        if (categoria.isEmpty()) {
+        if (categoriaActual.isEmpty()) {
             // No existe una categoria cuyo id sea idCategoria
             throw new NotFoundException();
         } else {
             // Existe una categoria cuyo id sea idCategoria
             // Extraemos los usuarios asociados a la cuenta de la categoría
-            var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta())
+            var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoriaActual.get().getIdCuenta())
                     .orElseThrow(NoAccessException::new);
 
             // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
@@ -84,6 +84,8 @@ public class CategoriaService {
                 throw new NoAccessException();
             } else {
                 // El usuario autenticado se encuentra en la lista de usuarios con permisos
+                categoria.setIdCuenta(categoriaActual.get().getIdCuenta());
+                categoria.setActivos(categoriaActual.get().getActivos());
                 return categoriaRepository.save(categoria);
             }
         }
