@@ -53,4 +53,34 @@ public class CategoriaController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
         }
     }
+
+    @PutMapping("{idCategoria}")
+    public ResponseEntity<CategoriaDTO> updateCategoria(@PathVariable(required = true) Integer idCategoria,
+                                                        @RequestBody(required = true) CategoriaDTO categoriaDTO) {
+        ResponseEntity responseEntity;
+
+        // Comprobamos si existe una categoria cuyo id sea idCategoria
+        if (!categoriaService.existsById(idCategoria)) {
+            // No existe una categoria cuyo id sea idCategoria
+            // Se debe devolver 404 con un mensaje de error
+            String error = "La categoría con ID " + idCategoria + " no existe.";
+
+            responseEntity = ResponseEntity.status(404).body(error);
+        } else {
+            // Existe una cuenta cuyo id sea idCategoria
+            // Comprobamos si el usuario cuenta con los permisos de actualizacion
+            if (!categoriaService.hasPermissionToUpdate(idCategoria)) {
+                // El usuario no cuenta con los permisos de actualizacion
+                // Se debe devolver 403 con un mensaje de error
+                String error = "Sin permisos suficientes.";
+
+                responseEntity = ResponseEntity.status(403).body(error).build();
+            } else {
+                // El usuario cuenta con los permisos de actualizacion
+                responseEntity = ResponseEntity.ok().body(categoriaDTO);
+            }
+        }
+
+        return responseEntity;
+    }
 }
