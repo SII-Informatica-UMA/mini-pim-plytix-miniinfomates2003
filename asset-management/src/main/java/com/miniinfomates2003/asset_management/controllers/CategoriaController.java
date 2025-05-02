@@ -1,6 +1,7 @@
 package com.miniinfomates2003.asset_management.controllers;
 
 import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
+import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
 import com.miniinfomates2003.asset_management.services.CategoriaService;
 import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
@@ -51,6 +52,29 @@ public class CategoriaController {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
+        }
+    }
+
+    @PutMapping("{idCategoria}")
+    public ResponseEntity<CategoriaDTO> updateCategoria(@PathVariable(required = true) Integer idCategoria,
+                                                        @RequestBody(required = true) CategoriaDTO categoriaDTO) {
+        try {
+            // Extraemos la entidad de CategoriaDTO
+            Categoria categoria = Mapper.toEntity(categoriaDTO);
+
+            // Actualizamos si id para que coincida con el de la categoria existente
+            categoria.setId(idCategoria);
+
+            // Guardamos la categoria ya actualizada
+            CategoriaDTO categoriaActualizada = Mapper.toDTO(categoriaService.updateCategoria(idCategoria, categoria));
+
+            return ResponseEntity.ok().body(categoriaActualizada);
+        } catch (NotFoundException nfe) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (NoAccessException nae) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
