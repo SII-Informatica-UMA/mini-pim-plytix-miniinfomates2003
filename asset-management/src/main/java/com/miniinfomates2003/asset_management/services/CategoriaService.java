@@ -1,12 +1,14 @@
 package com.miniinfomates2003.asset_management.services;
 
 import com.miniinfomates2003.asset_management.entities.Categoria;
+import com.miniinfomates2003.asset_management.entities.Usuario;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
 import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
 import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +41,8 @@ public class CategoriaService {
         // Comprobar que el usuario tenga acceso a la cuenta a la que pertenece la categoria
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoria.get().getIdCuenta())
                 .orElseThrow(NoAccessException::new);
-        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario)) {
             throw new NoAccessException();
         }
         return categoria;
@@ -53,7 +56,8 @@ public class CategoriaService {
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
                 .orElseThrow(NoAccessException::new);
 
-        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario)) {
             throw new NoAccessException();
         }
 
@@ -89,5 +93,10 @@ public class CategoriaService {
                 return categoriaRepository.save(categoria);
             }
         }
+    }
+
+    public boolean isAdmin(UserDetails user) {
+        return user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(Usuario.Rol.ADMINISTRADOR.name()));
     }
 }
