@@ -1,5 +1,6 @@
 package com.miniinfomates2003.asset_management.services;
 
+import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.entities.Usuario;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
@@ -123,14 +124,13 @@ public class CategoriaService {
                 // El usuario autenticado no se encuentra en la lista de usuarios con permisos
                 throw new NoAccessException();
             } else {
-                // Limpiamos la relación con los activos antes de eliminar la categoría
-                Categoria categoria = categoriaActual.get();
+                if (!categoriaActual.get().getActivos().isEmpty()) {
+                    throw new NoAccessException();
+                } else {
+                    Categoria categoria = categoriaActual.get();
 
-                if (categoria.getActivos() != null) {
-                    categoria.getActivos().clear();
+                    categoriaRepository.delete(categoria);
                 }
-
-                categoriaRepository.deleteById(idCategoria);
             }
         }
     }
