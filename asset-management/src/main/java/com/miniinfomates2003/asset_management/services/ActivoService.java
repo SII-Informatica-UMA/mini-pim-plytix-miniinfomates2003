@@ -12,6 +12,7 @@ import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +37,13 @@ public class ActivoService {
     }
 
     @Transactional
-    public ActivoDTO updateActivo(Integer idActivo, ActivoDTO activoDTO) {
+    public Activo updateActivo(Integer idActivo, ActivoDTO activoDTO) {
         Activo activo = activoRepository.findById(idActivo)
-                .orElseThrow(() -> new RuntimeException("Activo not found"));
+                .orElseThrow(NotFoundException::new);
+
+        if (!hasPermissionToUpdate(idActivo)) {
+            throw new NoAccessException(); // Forbidden
+        }
 
         // Updates the fields of the Activo entity with the values from ActivoDTO
         activo.setNombre(activoDTO.getNombre());
@@ -68,7 +73,7 @@ public class ActivoService {
 
         activo.setIdProductos(new HashSet<>(activoDTO.getProductos()));
 
-        return Mapper.toDTO(activo);
+        return activo;
     }
 
     public boolean hasPermissionToUpdate(Integer idActivo) {
@@ -142,8 +147,13 @@ public class ActivoService {
     }
 
     public void deleteActivo(Integer idActivo) {
+
         Activo activo = activoRepository.findById(idActivo)
-                .orElseThrow(() -> new RuntimeException("Activo not found"));
+                .orElseThrow(NotFoundException::new);
+
+        if (!hasPermissionToUpdate(idActivo)) {
+            throw new NoAccessException(); // Forbidden
+        }
 
         if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
             for (Categoria categoria : activo.getCategorias()) {
