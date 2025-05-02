@@ -40,6 +40,7 @@ public class Mapper {
             categorias = dto.getCategorias().stream()
                     .map(categoriaDTO -> Categoria.builder()
                             .id(categoriaDTO.getId())
+                            .nombre(categoriaDTO.getNombre())
                             .build())
                     .collect(Collectors.toSet());
         }
