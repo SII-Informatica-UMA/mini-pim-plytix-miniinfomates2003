@@ -77,4 +77,19 @@ public class CategoriaController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @DeleteMapping("{idCategoria}")
+    public ResponseEntity<CategoriaDTO> deleteCategoria(@PathVariable(required = true) Integer idCategoria) {
+        try {
+            categoriaService.deleteCategoria(idCategoria);
+
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException nfe) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (NoAccessException nae) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

@@ -99,4 +99,39 @@ public class CategoriaService {
         return user.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals(Usuario.Rol.ADMINISTRADOR.name()));
     }
+
+    public void deleteCategoria(Integer idCategoria) {
+        // Obtenemos el usuario autenticado
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+
+        // Extraemos la categoría con id idCategoria
+        Optional<Categoria> categoriaActual = categoriaRepository.findById(idCategoria);
+
+        // Comprobamos si existe una categoria cuyo id sea idCategoria
+        if (categoriaActual.isEmpty()) {
+            // No existe una categoria cuyo id sea idCategoria
+            throw new NotFoundException();
+        } else {
+            // Existe una categoria cuyo id sea idCategoria
+            // Extraemos los usuarios asociados a la cuenta de la categoría
+            var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoriaActual.get().getIdCuenta())
+                    .orElseThrow(NoAccessException::new);
+
+            // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
+            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+                // El usuario autenticado no se encuentra en la lista de usuarios con permisos
+                throw new NoAccessException();
+            } else {
+                // Limpiamos la relación con los activos antes de eliminar la categoría
+                Categoria categoria = categoriaActual.get();
+
+                if (categoria.getActivos() != null) {
+                    categoria.getActivos().clear();
+                }
+
+                categoriaRepository.deleteById(idCategoria);
+            }
+        }
+    }
 }
