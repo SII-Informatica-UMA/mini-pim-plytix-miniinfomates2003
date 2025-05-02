@@ -3,6 +3,7 @@ package com.miniinfomates2003.asset_management.controllers;
 import com.miniinfomates2003.asset_management.dtos.ActivoDTO;
 import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
+import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
 import com.miniinfomates2003.asset_management.services.ActivoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,22 +27,29 @@ public class ActivoController {
     @PutMapping("/{idActivo}")
     public ResponseEntity<ActivoDTO> updateActivo(@PathVariable(required = true) Integer idActivo,
                                                   @RequestBody(required = true) ActivoDTO activoDTO) {
-
-        if (!activoService.hasPermissionToUpdate(idActivo)) {
-            return ResponseEntity.status(403).build(); // Forbidden
+        try {
+            return ResponseEntity.ok(Mapper.toDTO(activoService.updateActivo(idActivo, activoDTO)));
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (NoAccessException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-
-        ActivoDTO activoActualizado = activoService.updateActivo(idActivo, activoDTO);
-        return ResponseEntity.ok(activoActualizado);
     }
 
     @DeleteMapping("/{idActivo}")
     public ResponseEntity<Void> deleteActivo(@PathVariable(required = true) Integer idActivo) {
-        if (!activoService.hasPermissionToUpdate(idActivo)) {
-            return ResponseEntity.status(403).build(); // Forbidden
+        try {
+            activoService.deleteActivo(idActivo);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (NoAccessException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-        activoService.deleteActivo(idActivo);
-        return ResponseEntity.ok().build();
     }
 
     @PostMapping
