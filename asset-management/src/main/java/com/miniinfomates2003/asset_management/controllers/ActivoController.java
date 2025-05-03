@@ -4,6 +4,7 @@ import com.miniinfomates2003.asset_management.dtos.ActivoDTO;
 import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
 import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
+import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
 import com.miniinfomates2003.asset_management.services.ActivoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/activo")
@@ -24,6 +28,51 @@ public class ActivoController {
         this.activoService = activoService;
     }
 
+    @GetMapping
+    public ResponseEntity<?> obtenerActivos(@RequestParam(required = false) Integer idActivo,
+                                            @RequestParam(required = false) Integer idCategoria,
+                                            @RequestParam(required = false) Integer idProducto,
+                                            @RequestParam(required = false) Integer idCuenta) {
+        try {
+            if (idActivo != null) {
+                Optional<Activo> activoOpt = activoService.obtenerPorActivo(idActivo);
+                ActivoDTO dto = activoOpt
+                        .map(a -> Mapper.toDTO(a))
+                        .orElseThrow(NoAccessException::new);
+
+                return ResponseEntity.ok(List.of(dto));
+            } else if (idCategoria != null) {
+                var activos = activoService.obtenerPorCategoria(idCategoria)
+                        .stream()
+                        .map(Mapper::toDTO)
+                        .collect(Collectors.toList());
+                return ResponseEntity.ok(activos);
+            } else if (idProducto != null) {
+                var activos = activoService.obtenerPorProducto(idProducto)
+                        .stream()
+                        .map(Mapper::toDTO)
+                        .collect(Collectors.toList());
+                return ResponseEntity.ok(activos);
+            } else if (idCuenta != null) {
+                var activos = activoService.obtenerPorCuenta(idCuenta)
+                        .stream()
+                        .map(Mapper::toDTO)
+                        .collect(Collectors.toList());
+                return ResponseEntity.ok(activos);
+            } else  {
+                return ResponseEntity.badRequest().build();
+            }
+        } catch (TokenMissingException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (NoAccessException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
+        }
+    }
+    
     @PutMapping("/{idActivo}")
     public ResponseEntity<ActivoDTO> updateActivo(@PathVariable(required = true) Integer idActivo,
                                                   @RequestBody(required = true) ActivoDTO activoDTO) {
