@@ -73,4 +73,21 @@ public class CuentaService {
             return Optional.empty();
         }
     }
+
+    public Optional<Integer> getMaxNumCategoriasActivosPermitidos(Integer idCuenta) {
+        var uri = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
+                .queryParam("idCuenta", idCuenta)
+                .build()
+                .toUri();
+        var appJwtToken = jwtUtil.generateToken(usuarioApp);
+
+        var peticion = RequestEntity.get(uri)
+                .header("Authorization", "Bearer" + appJwtToken)
+                .build();
+        try {
+            return Optional.ofNullable(this.restTemplate.exchange(peticion, Cuenta[].class).getBody()[0].getPlan().getMaxCategoriasActivos());
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
 }
