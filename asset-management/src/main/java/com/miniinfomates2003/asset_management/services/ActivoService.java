@@ -4,6 +4,7 @@ import com.miniinfomates2003.asset_management.controllers.Mapper;
 import com.miniinfomates2003.asset_management.dtos.ActivoDTO;
 import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.entities.Categoria;
+import com.miniinfomates2003.asset_management.entities.Usuario;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
 import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
 import com.miniinfomates2003.asset_management.exceptions.TokenMissingException;
@@ -13,10 +14,13 @@ import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -168,5 +172,84 @@ public class ActivoService {
         }
 
         activoRepository.delete(activo);
+    }
+
+    public boolean isAdmin(UserDetails user) {
+        return user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(Usuario.Rol.ADMINISTRADOR.name()));
+    }
+
+    public Optional<Activo> obtenerPorActivo(Integer idActivo) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+        Optional<Activo> activo = activoRepository.findById(idActivo);
+
+        if (activo.isEmpty())
+            throw new NotFoundException();
+        
+        var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.get().getIdCuenta())
+                .orElseThrow(NoAccessException::new);
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
+            throw new NoAccessException();
+        return activo; 
+    }
+
+    public List<Activo> obtenerPorCuenta(Integer idCuenta) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+        
+        var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
+                .orElseThrow(NoAccessException::new);
+        
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
+            throw new NoAccessException();
+        
+        return activoRepository.findByIdCuenta(idCuenta);
+    }
+
+    public List<Activo> obtenerPorCategoria(Integer idCategoria) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+        
+        List<Activo> activos = activoRepository.findByIdCategoria(idCategoria);
+
+        if (activos.isEmpty())
+            throw new NotFoundException();
+        
+        var usuariosAsociados = activos.stream()
+                        .map(Activo::getIdCuenta)
+                        .distinct()
+                        .map(idCuenta -> cuentaService.getUsuariosAsociadosACuenta(idCuenta)
+                                                            .orElseThrow(NoAccessException::new))
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList());  
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
+            throw new NoAccessException();
+        return activos;
+    }
+
+    public List<Activo> obtenerPorProducto(Integer idProducto) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+
+        List<Activo> activos = activoRepository.findByIdProductosContaining(idProducto);
+        
+        if (activos.isEmpty())
+            throw new NotFoundException();
+        
+        List<Usuario> usuariosAsociados = activos.stream()
+                                .map(Activo::getIdCuenta)
+                                .distinct()
+                                .map(idCuenta -> cuentaService.getUsuariosAsociadosACuenta(idCuenta)
+                                                                .orElseThrow(NoAccessException::new))
+                                .flatMap(List::stream)
+                                .collect(Collectors.toList());
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
+            throw new NoAccessException();
+        return activos;
     }
 }
