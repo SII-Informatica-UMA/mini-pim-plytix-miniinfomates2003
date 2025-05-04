@@ -98,13 +98,20 @@ public class ActivoService {
         activo.setId(null);
         Activo savedActivo = activoRepository.save(activo);
 
+        if (savedActivo.getCategorias() == null) {
+            savedActivo.setCategorias(new HashSet<>());
+        }
+
         // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
         if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+            Set<Categoria> categoriasActualizadas = new HashSet<>();
             for (Categoria categoria : activo.getCategorias()) {
                 // Aquí es necesario cargar la categoría desde la base de datos
                 // para poder modificar su colección de activos
                 Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
                         .orElseThrow(NotFoundException::new);
+
+                categoriasActualizadas.add(managedCategoria);
 
                 if (managedCategoria.getActivos() == null) {
                     managedCategoria.setActivos(new HashSet<>());
@@ -113,6 +120,7 @@ public class ActivoService {
                 managedCategoria.getActivos().add(savedActivo);
                 categoriaRepository.save(managedCategoria);
             }
+            savedActivo.setCategorias(categoriasActualizadas);
         }
         return savedActivo;
     }
