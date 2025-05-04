@@ -41,6 +41,8 @@ public class ActivoController {
                     .buildAndExpand(activo.getId())
                     .toUri();
             return ResponseEntity.created(uri).body(Mapper.toDTO(activo));
+        } catch (NotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (NoAccessException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
