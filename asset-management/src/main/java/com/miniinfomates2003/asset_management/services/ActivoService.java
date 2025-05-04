@@ -81,10 +81,10 @@ public class ActivoService {
         }
         // Comprobar que en la cuenta en la que queremos crear el activo no se ha llegado al máximo de activos permitidos
         var maxNumActivos = cuentaService.getMaxNumActivosPermitidos(idCuenta).orElseThrow(NoAccessException::new);
-        System.out.println("Número máximo de activos permitidos: " + maxNumActivos);
+        // System.out.println("Número máximo de activos permitidos: " + maxNumActivos);
         var activos = activoRepository.findByIdCuenta(idCuenta);
         var numActivosActualmente = activos.size();
-        System.out.println("Número actual de activos: " + activos.size());
+        // System.out.println("Número actual de activos: " + activos.size());
         if (maxNumActivos.equals(numActivosActualmente)) {
             throw new NoAccessException();
         }

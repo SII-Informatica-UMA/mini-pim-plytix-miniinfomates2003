@@ -50,10 +50,10 @@ public class CategoriaService {
             throw new NoAccessException();
 
         var maxNumCategorias = cuentaService.getMaxNumCategoriasActivosPermitidos(idCuenta).orElseThrow(NoAccessException::new);
-        System.out.println("Número máximo de categorías permitidos: " + maxNumCategorias);
+        // System.out.println("Número máximo de categorías permitidos: " + maxNumCategorias);
         var categorias = categoriaRepository.findByIdCuenta(idCuenta);
         var numCategoriasActualmente = categorias.size();
-        System.out.println("Número actual de categorías: " + numCategoriasActualmente);
+        // System.out.println("Número actual de categorías: " + numCategoriasActualmente);
         if (maxNumCategorias.equals(numCategoriasActualmente))
             throw new NoAccessException();
 
@@ -104,7 +104,7 @@ public class CategoriaService {
                 .orElseThrow(TokenMissingException::new);
 
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                .orElseThrow(NoAccessException::new);
+                .orElseThrow(NotFoundException::new);
 
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                 && !isAdmin(usuario)) {
