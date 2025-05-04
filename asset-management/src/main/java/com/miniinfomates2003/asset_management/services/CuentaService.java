@@ -82,7 +82,7 @@ public class CuentaService {
         var appJwtToken = jwtUtil.generateToken(usuarioApp);
 
         var peticion = RequestEntity.get(uri)
-                .header("Authorization", "Bearer" + appJwtToken)
+                .header("Authorization", "Bearer " + appJwtToken)
                 .build();
         try {
             return Optional.ofNullable(this.restTemplate.exchange(peticion, Cuenta[].class).getBody()[0].getPlan().getMaxCategoriasActivos());
