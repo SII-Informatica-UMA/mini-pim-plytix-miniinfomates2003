@@ -33,6 +33,51 @@ public class CategoriaService {
         this.cuentaService = cuentaService;
     }
 
+    public boolean isAdmin(UserDetails user) {
+        return user.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(Usuario.Rol.ADMINISTRADOR.name()));
+    }
+
+    public Categoria aniadirCategoria(Categoria categoria, Integer idCuenta) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+
+        var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
+                .orElseThrow(NoAccessException::new);
+
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
+            throw new NoAccessException();
+
+        var maxNumCategorias = cuentaService.getMaxNumCategoriasActivosPermitidos(idCuenta).orElseThrow(NoAccessException::new);
+        System.out.println("Número máximo de categorías permitidos: " + maxNumCategorias);
+        var categorias = categoriaRepository.findByIdCuenta(idCuenta);
+        var numCategoriasActualmente = categorias.size();
+        System.out.println("Número actual de categorías: " + numCategoriasActualmente);
+        if (maxNumCategorias.equals(numCategoriasActualmente))
+            throw new NoAccessException();
+
+        if (categoria.getActivos() == null)
+            categoria.setActivos(new HashSet<>());
+        categoria.setId(null);
+        Categoria savedCategoria = categoriaRepository.save(categoria);
+
+        if (categoria.getActivos() != null && !categoria.getActivos().isEmpty()) {
+            for (Activo activo : categoria.getActivos()) {
+                Activo managedActivo = activoRepository.findById(activo.getId())
+                        .orElseThrow(NotFoundException::new);
+
+                if (managedActivo.getCategorias() == null)
+                    managedActivo.setCategorias(new HashSet<>());
+
+                managedActivo.getCategorias().add(savedCategoria);
+                activoRepository.save(managedActivo);
+            }
+        }
+
+        return savedCategoria;
+    }
+
     public Optional<Categoria> obtenerPorCategoria(Integer idCategoria) {
 
         var usuario = SecurityConfguration.getAuthenticatedUser()
@@ -88,7 +133,8 @@ public class CategoriaService {
                     .orElseThrow(NoAccessException::new);
 
             // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
-            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                    && !isAdmin(usuario)) {
                 // El usuario autenticado no se encuentra en la lista de usuarios con permisos
                 throw new NoAccessException();
             } else {
@@ -98,51 +144,6 @@ public class CategoriaService {
                 return categoriaRepository.save(categoria);
             }
         }
-    }
-
-    public Categoria aniadirCategoria(Categoria categoria, Integer idCuenta) {
-        var usuario = SecurityConfguration.getAuthenticatedUser()
-                .orElseThrow(TokenMissingException::new);
-        
-        var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                .orElseThrow(NoAccessException::new);
-        
-        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
-                && !isAdmin(usuario))
-            throw new NoAccessException();
-        
-        var maxNumCategorias = cuentaService.getMaxNumCategoriasActivosPermitidos(idCuenta).orElseThrow(NoAccessException::new);
-        System.out.println("Número máximo de categorías permitidos: " + maxNumCategorias);
-        var categorias = categoriaRepository.findByIdCuenta(idCuenta);
-        var numCategoriasActualmente = categorias.size();
-        System.out.println("Número actual de categorías: " + numCategoriasActualmente);
-        if (maxNumCategorias.equals(numCategoriasActualmente))
-            throw new NoAccessException();
-        
-        if (categoria.getActivos() == null)
-            categoria.setActivos(new HashSet<>());
-        categoria.setId(null);
-        Categoria savedCategoria = categoriaRepository.save(categoria);
-
-        if (categoria.getActivos() != null && !categoria.getActivos().isEmpty()) {
-            for (Activo activo : categoria.getActivos()) {
-                Activo managedActivo = activoRepository.findById(activo.getId())
-                        .orElseThrow(NotFoundException::new);
-                
-                if (managedActivo.getCategorias() == null)
-                    managedActivo.setCategorias(new HashSet<>());
-                
-                managedActivo.getCategorias().add(savedCategoria);
-                activoRepository.save(managedActivo);
-            }
-        }
-
-        return savedCategoria;
-    }
-
-    public boolean isAdmin(UserDetails user) {
-        return user.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals(Usuario.Rol.ADMINISTRADOR.name()));
     }
 
     public void deleteCategoria(Integer idCategoria) {
@@ -164,7 +165,8 @@ public class CategoriaService {
                     .orElseThrow(NoAccessException::new);
 
             // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
-            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))) {
+            if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                    && !isAdmin(usuario)) {
                 // El usuario autenticado no se encuentra en la lista de usuarios con permisos
                 throw new NoAccessException();
             } else {

@@ -28,6 +28,26 @@ public class ActivoController {
         this.activoService = activoService;
     }
 
+    @PostMapping
+    public ResponseEntity<?> crearActivo(@RequestBody ActivoDTO activoDTO,
+                                         @RequestParam Integer idCuenta,
+                                         UriComponentsBuilder builder) {
+        try {
+            Activo activo = Mapper.toEntity(activoDTO);
+            activo.setIdCuenta(idCuenta);
+            activo = activoService.aniadirActivo(activo, idCuenta);
+            URI uri = builder
+                    .path("/activo/{id}")
+                    .buildAndExpand(activo.getId())
+                    .toUri();
+            return ResponseEntity.created(uri).body(Mapper.toDTO(activo));
+        } catch (NoAccessException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> obtenerActivos(@RequestParam(required = false) Integer idActivo,
                                             @RequestParam(required = false) Integer idCategoria,
@@ -98,26 +118,6 @@ public class ActivoController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @PostMapping
-    public ResponseEntity<?> crearActivo(@RequestBody ActivoDTO activoDTO,
-                                         @RequestParam Integer idCuenta,
-                                         UriComponentsBuilder builder) {
-        try {
-            Activo activo = Mapper.toEntity(activoDTO);
-            activo.setIdCuenta(idCuenta);
-            activo = activoService.aniadirActivo(activo, idCuenta);
-            URI uri = builder
-                    .path("/activo/{id}")
-                    .buildAndExpand(activo.getId())
-                    .toUri();
-            return ResponseEntity.created(uri).body(Mapper.toDTO(activo));
-        } catch (NoAccessException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
         }
     }
 }

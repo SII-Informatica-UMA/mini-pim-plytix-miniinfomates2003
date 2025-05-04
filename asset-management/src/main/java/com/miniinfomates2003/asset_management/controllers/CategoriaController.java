@@ -28,6 +28,26 @@ public class CategoriaController {
         this.categoriaService = categoriaService;
     }
 
+    @PostMapping
+    public ResponseEntity<?> crearCategoria(@RequestBody CategoriaDTO categoriaDTO,
+                                            @RequestParam Integer idCuenta,
+                                            UriComponentsBuilder builder) {
+        try {
+            Categoria categoria = Mapper.toEntity(categoriaDTO);
+            categoria.setIdCuenta(idCuenta);
+            categoria = categoriaService.aniadirCategoria(categoria, idCuenta);
+            URI uri = builder
+                    .path("/categoria-activo/{id}")
+                    .buildAndExpand(categoria.getId())
+                    .toUri();
+            return ResponseEntity.created(uri).body(Mapper.toDTO(categoria));
+        } catch (NoAccessException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> obtenerCategorias(@RequestParam(required = false) Integer idCuenta,
                                                @RequestParam(required = false) Integer idCategoria) {
@@ -93,26 +113,6 @@ public class CategoriaController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @PostMapping
-    public ResponseEntity<?> crearCategoria(@RequestBody CategoriaDTO categoriaDTO,
-                                            @RequestParam Integer idCuenta,
-                                            UriComponentsBuilder builder) {
-        try {
-            Categoria categoria = Mapper.toEntity(categoriaDTO);
-            categoria.setIdCuenta(idCuenta);
-            categoria = categoriaService.aniadirCategoria(categoria, idCuenta);
-            URI uri = builder
-                    .path("/categoria-activo/{id}")
-                    .buildAndExpand(categoria.getId())
-                    .toUri();
-            return ResponseEntity.created(uri).body(Mapper.toDTO(categoria));
-        } catch (NoAccessException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
         }
     }
 }
