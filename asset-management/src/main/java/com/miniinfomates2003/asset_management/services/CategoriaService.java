@@ -43,7 +43,7 @@ public class CategoriaService {
                 .orElseThrow(TokenMissingException::new);
 
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                .orElseThrow(NoAccessException::new);
+                .orElseThrow(NotFoundException::new);
 
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                 && !isAdmin(usuario))
@@ -90,7 +90,7 @@ public class CategoriaService {
         }
         // Comprobar que el usuario tenga acceso a la cuenta a la que pertenece la categoria
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoria.get().getIdCuenta())
-                .orElseThrow(NoAccessException::new);
+                .orElseThrow(NotFoundException::new);
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                 && !isAdmin(usuario)) {
             throw new NoAccessException();
@@ -130,7 +130,7 @@ public class CategoriaService {
             // Existe una categoria cuyo id sea idCategoria
             // Extraemos los usuarios asociados a la cuenta de la categoría
             var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoriaActual.get().getIdCuenta())
-                    .orElseThrow(NoAccessException::new);
+                    .orElseThrow(NotFoundException::new);
 
             // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
             if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
@@ -162,7 +162,7 @@ public class CategoriaService {
             // Existe una categoria cuyo id sea idCategoria
             // Extraemos los usuarios asociados a la cuenta de la categoría
             var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(categoriaActual.get().getIdCuenta())
-                    .orElseThrow(NoAccessException::new);
+                    .orElseThrow(NotFoundException::new);
 
             // Comprobamos si el usuario autenticado se encuentra en la lista de usuarios con permisos
             if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))

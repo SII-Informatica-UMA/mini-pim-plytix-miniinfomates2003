@@ -54,7 +54,7 @@ public class ActivoService {
                     .orElseThrow(NotFoundException::new);
 
             var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta())
-                    .orElseThrow(NoAccessException::new);
+                    .orElseThrow(NotFoundException::new);
 
             if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                     && !isAdmin(usuario)) {
@@ -73,7 +73,7 @@ public class ActivoService {
                 .orElseThrow(TokenMissingException::new);
 
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                .orElseThrow(NoAccessException::new);
+                .orElseThrow(NotFoundException::new);
 
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                 && !isAdmin(usuario)) {
@@ -126,7 +126,7 @@ public class ActivoService {
             throw new NotFoundException();
 
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(activo.get().getIdCuenta())
-                .orElseThrow(NoAccessException::new);
+                .orElseThrow(NotFoundException::new);
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                 && !isAdmin(usuario))
             throw new NoAccessException();
@@ -138,7 +138,7 @@ public class ActivoService {
                 .orElseThrow(TokenMissingException::new);
 
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                .orElseThrow(NoAccessException::new);
+                .orElseThrow(NotFoundException::new);
 
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
                 && !isAdmin(usuario))
@@ -160,7 +160,7 @@ public class ActivoService {
                 .map(Activo::getIdCuenta)
                 .distinct()
                 .map(idCuenta -> cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                        .orElseThrow(NoAccessException::new))
+                        .orElseThrow(NotFoundException::new))
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
@@ -182,7 +182,7 @@ public class ActivoService {
                 .map(Activo::getIdCuenta)
                 .distinct()
                 .map(idCuenta -> cuentaService.getUsuariosAsociadosACuenta(idCuenta)
-                        .orElseThrow(NoAccessException::new))
+                        .orElseThrow(NotFoundException::new))
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
         if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
