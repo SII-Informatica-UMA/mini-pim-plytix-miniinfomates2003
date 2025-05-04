@@ -3,6 +3,7 @@ package com.miniinfomates2003.asset_management.services;
 import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.entities.Usuario;
+import com.miniinfomates2003.asset_management.repositories.ActivoRepository;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
@@ -13,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,11 +23,13 @@ import java.util.Optional;
 public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
+    private final ActivoRepository activoRepository;
     private final CuentaService cuentaService;
 
     @Autowired
-    public CategoriaService(CategoriaRepository categoriaRepository, CuentaService cuentaService) {
+    public CategoriaService(CategoriaRepository categoriaRepository, ActivoRepository activoRepository, CuentaService cuentaService) {
         this.categoriaRepository = categoriaRepository;
+        this.activoRepository = activoRepository;
         this.cuentaService = cuentaService;
     }
 
@@ -94,6 +98,46 @@ public class CategoriaService {
                 return categoriaRepository.save(categoria);
             }
         }
+    }
+
+    public Categoria aniadirCategoria(Categoria categoria, Integer idCuenta) {
+        var usuario = SecurityConfguration.getAuthenticatedUser()
+                .orElseThrow(TokenMissingException::new);
+        
+        var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
+                .orElseThrow(NoAccessException::new);
+        
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
+            throw new NoAccessException();
+        
+        var maxNumCategorias = cuentaService.getMaxNumCategoriasActivosPermitidos(idCuenta).orElseThrow(NoAccessException::new);
+        System.out.println("Número máximo de categorías permitidos: " + maxNumCategorias);
+        var categorias = categoriaRepository.findByIdCuenta(idCuenta);
+        var numCategoriasActualmente = categorias.size();
+        System.out.println("Número actual de categorías: " + numCategoriasActualmente);
+        if (maxNumCategorias.equals(numCategoriasActualmente))
+            throw new NoAccessException();
+        
+        if (categoria.getActivos() == null)
+            categoria.setActivos(new HashSet<>());
+        categoria.setId(null);
+        Categoria savedCategoria = categoriaRepository.save(categoria);
+
+        if (categoria.getActivos() != null && !categoria.getActivos().isEmpty()) {
+            for (Activo activo : categoria.getActivos()) {
+                Activo managedActivo = activoRepository.findById(activo.getId())
+                        .orElseThrow(NotFoundException::new);
+                
+                if (managedActivo.getCategorias() == null)
+                    managedActivo.setCategorias(new HashSet<>());
+                
+                managedActivo.getCategorias().add(savedCategoria);
+                activoRepository.save(managedActivo);
+            }
+        }
+
+        return savedCategoria;
     }
 
     public boolean isAdmin(UserDetails user) {

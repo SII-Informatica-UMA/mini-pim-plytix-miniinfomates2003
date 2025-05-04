@@ -10,7 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -90,6 +93,26 @@ public class CategoriaController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping
+    public ResponseEntity<?> crearCategoria(@RequestBody CategoriaDTO categoriaDTO,
+                                            @RequestParam Integer idCuenta,
+                                            UriComponentsBuilder builder) {
+        try {
+            Categoria categoria = Mapper.toEntity(categoriaDTO);
+            categoria.setIdCuenta(idCuenta);
+            categoria = categoriaService.aniadirCategoria(categoria, idCuenta);
+            URI uri = builder
+                    .path("/categoria-activo/{id}")
+                    .buildAndExpand(categoria.getId())
+                    .toUri();
+            return ResponseEntity.created(uri).body(Mapper.toDTO(categoria));
+        } catch (NoAccessException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno del servidor");
         }
     }
 }
