@@ -107,7 +107,8 @@ public class CategoriaService {
         var usuariosAsociados = cuentaService.getUsuariosAsociadosACuenta(idCuenta)
                 .orElseThrow(NoAccessException::new);
         
-        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername())))
+        if (usuariosAsociados.stream().noneMatch(u -> u.getId().toString().equals(usuario.getUsername()))
+                && !isAdmin(usuario))
             throw new NoAccessException();
         
         var maxNumCategorias = cuentaService.getMaxNumCategoriasActivosPermitidos(idCuenta).orElseThrow(NoAccessException::new);
