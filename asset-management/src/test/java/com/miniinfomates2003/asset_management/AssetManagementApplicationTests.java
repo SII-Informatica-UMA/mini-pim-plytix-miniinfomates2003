@@ -1,6 +1,9 @@
 package com.miniinfomates2003.asset_management;
 
 import com.miniinfomates2003.asset_management.dtos.ActivoDTO;
+import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
+import com.miniinfomates2003.asset_management.entities.Activo;
+import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.repositories.ActivoRepository;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +24,9 @@ import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
 
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,6 +44,9 @@ public class AssetManagementApplicationTests {
 
     @Value(value = "${tokenAdmin}")
     private String tokenAdmin;
+
+    @Value(value = "${tokenVictoria}")
+    private String tokenVictoria;
 
     @Autowired
     private ActivoRepository activoRepository;
@@ -157,6 +165,65 @@ public class AssetManagementApplicationTests {
                     new ParameterizedTypeReference<List<ActivoDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.getBody()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("cuando no hay categorias")
+    class CategoriasVacias {
+        @Test
+        @DisplayName("devuelve la lista de categorías vacía a partir de un idCuenta")
+        public void devuelveListaAPartirDeIdCuenta() {
+            List<Long> idCuentaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCuenta", idCuentaValues);
+            var respuesta = restTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.getBody()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("devuelve error cuando se pide una categoría concreta")
+        public void devuelveListaAPartirDeIdCategoria() {
+            List<Long> idCategoriaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
+            var respuesta = restTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+    }
+
+    @Nested
+    @DisplayName("cuando hay categorias")
+    class HayCategorias {
+        @BeforeEach
+        public void introduceDatos() {
+            categoriaRepository.save(new Categoria(null, "Especificaciones", 3, null));
+        }
+
+        @Test
+        @DisplayName("devuelve una categoría concreta si tiene permiso")
+        public void devuelveCategoria() {
+            List<Long> idCategoriaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
+            var respuesta = restTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve error si no se tiene acceso a la cuenta de la categoría")
+        public void devuelveErrorCategoria() {
+            List<Long> idCategoriaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, "idCategoria", idCategoriaValues);
+            var respuesta = restTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {
+                    });
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
         }
     }
 }
