@@ -95,6 +95,55 @@ public class AssetManagementApplicationTests {
         return peticion;
     }
 
+    private URI uriWithQueryParams(String scheme, String host, int port, String path, String paramName, List<Long> paramValues) {
+        UriBuilderFactory ubf = new DefaultUriBuilderFactory();
+        UriBuilder ub = ubf.builder()
+                .scheme(scheme)
+                .host(host)
+                .port(port)
+                .path(path);
+
+        if (paramValues != null && !paramValues.isEmpty()) {
+            for (Long value : paramValues) {
+                ub = ub.queryParam(paramName, value);
+            }
+        }
+
+        return ub.build();
+    }
+
+    private RequestEntity<Void> putWithQueryParams(String scheme, String host, int port, String path, String paramName, List<Long> paramValues) {
+        URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
+        var peticion = RequestEntity.put(uri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .build();
+        return peticion;
+    }
+
+    private RequestEntity<Void> deleteWithQueryParams(String scheme, String host, int port, String path, String paramName, List<Long> paramValues) {
+        URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
+        var peticion = RequestEntity.delete(uri)
+                .build();
+        return peticion;
+    }
+
+    private RequestEntity<Void> getWithQueryParams(String scheme, String host, int port, String path, String token, String paramName, List<Long> paramValues) {
+        URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
+        var peticion = RequestEntity.get(uri)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + token)
+                .build();
+        return peticion;
+    }
+
+    private <T> RequestEntity<T> postWithQueryParams(String scheme, String host, int port, String path, T object, String paramName, List<Long> paramValues) {
+        URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
+        var peticion = RequestEntity.post(uri)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(object);
+        return peticion;
+    }
+
 
     @Nested
     @DisplayName("cuando no hay activos")
@@ -102,7 +151,8 @@ public class AssetManagementApplicationTests {
         @Test
         @DisplayName("devuelve la lista de activos vacía")
         public void devuelveLista() {
-            var peticion = get("http", "localhost", port, "/activo?idCuenta=1", tokenAdmin);
+            List<Long> idCuentaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCuenta", idCuentaValues);
             var respuesta = restTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<ActivoDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
