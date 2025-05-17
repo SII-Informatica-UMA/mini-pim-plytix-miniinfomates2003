@@ -19,7 +19,6 @@ import java.util.Optional;
 
 @Configuration
 @EnableWebSecurity
-@Profile("!test") // No se carga si el perfil activo es "test"
 public class SecurityConfguration {
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
