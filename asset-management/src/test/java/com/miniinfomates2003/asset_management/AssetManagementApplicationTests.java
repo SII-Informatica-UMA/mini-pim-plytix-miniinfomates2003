@@ -120,17 +120,19 @@ public class AssetManagementApplicationTests {
         return ub.build();
     }
 
-    private RequestEntity<Void> putWithQueryParams(String scheme, String host, int port, String path, String paramName, List<Long> paramValues) {
+    private RequestEntity<Void> putWithQueryParams(String scheme, String host, int port, String path, String token, String paramName, List<Long> paramValues) {
         URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
         var peticion = RequestEntity.put(uri)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + token)
                 .build();
         return peticion;
     }
 
-    private RequestEntity<Void> deleteWithQueryParams(String scheme, String host, int port, String path, String paramName, List<Long> paramValues) {
+    private RequestEntity<Void> deleteWithQueryParams(String scheme, String host, int port, String path, String token, String paramName, List<Long> paramValues) {
         URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
         var peticion = RequestEntity.delete(uri)
+                .header("Authorization", "Bearer " + token)
                 .build();
         return peticion;
     }
@@ -144,10 +146,11 @@ public class AssetManagementApplicationTests {
         return peticion;
     }
 
-    private <T> RequestEntity<T> postWithQueryParams(String scheme, String host, int port, String path, T object, String paramName, List<Long> paramValues) {
+    private <T> RequestEntity<T> postWithQueryParams(String scheme, String host, int port, String path,  String token, T object, String paramName, List<Long> paramValues) {
         URI uri = uriWithQueryParams(scheme, host, port, path, paramName, paramValues);
         var peticion = RequestEntity.post(uri)
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + token)
                 .body(object);
         return peticion;
     }
@@ -165,6 +168,52 @@ public class AssetManagementApplicationTests {
                     new ParameterizedTypeReference<List<ActivoDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.getBody()).isEmpty();
+        }
+    }
+
+    @Nested
+    @DisplayName("cuando hay activos y no se excede el número permitido")
+    class HayActivos {
+        @BeforeEach
+        public void introduceDatos() {
+            Activo activo = Activo.builder()
+                    .nombre("Manual del televisor")
+                    .tipo("PDF")
+                    .tamanio(2)
+                    .url("https://mallba3.lcc.uma.es/activos/manual-televisor.pdf")
+                    .idCuenta(1)
+                    .build();
+            activoRepository.save(activo);
+        }
+        @Test
+        @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta")
+        public void creaActivo() {
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
+            var respuesta = restTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+        @Test
+        @DisplayName("devuelve error si no se tiene acceso a la cuenta")
+        public void devuelveError() {
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(3L));
+            var respuesta = restTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
         }
     }
 
