@@ -32,8 +32,7 @@ import java.net.URI;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -169,50 +168,111 @@ public class AssetManagementApplicationTests {
         return peticion;
     }
 
+    public void simulaRespuestaUsuariosCuentaUno() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/1/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                                """
+                                [
+                                  {
+                                    "nombre": "Antonio",
+                                    "apellido1": "García",
+                                    "apellido2": "Ramos",
+                                    "email": "antonio@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 2
+                                  },
+                                  {
+                                    "nombre": "Victoria",
+                                    "apellido1": "Rodríguez",
+                                    "apellido2": "Fernández",
+                                    "email": "victoria@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 3
+                                  }
+                                ]
+                                """
+                        )
+                );
+    }
+
+    public void simulaRespuestaUsuariosCuentaTres() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/3/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                                """
+                                [
+                                  {
+                                    "nombre": "Antonio",
+                                    "apellido1": "García",
+                                    "apellido2": "Ramos",
+                                    "email": "antonio@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 2
+                                  }
+                                ]
+                                """
+                        )
+                );
+    }
+
+    public void simulaRespuestaMaxNumActivosCuentaUno() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
+                .queryParam("idCuenta", 1)
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                        """
+                                [
+                                  {
+                                    "id": 1,
+                                    "nombre": "Cuenta 1",
+                                    "direccion": "Calle Ficticia 123, Ciudad Ficticia",
+                                    "nif": "12345678B",
+                                    "fechaAlta": "2023-01-15",
+                                    "plan": {
+                                      "id": 1,
+                                      "nombre": "Plan Básico",
+                                      "maxProductos": 5,
+                                      "maxActivos": 5,
+                                      "maxAlmacenamiento": 5,
+                                      "maxCategoriasProductos": 3,
+                                      "maxCategoriasActivos": 3,
+                                      "maxRelaciones": 1,
+                                      "precio": 9.99
+                                    }
+                                  }
+                                ]
+                                """
+                        ));
+    }
+
+    @BeforeEach
+    public void setUpMockServer() {
+        mockServer = MockRestServiceServer.createServer(restTemplate);
+    }
 
     @Nested
     @DisplayName("cuando no hay activos")
     class ActivosVacio {
-        @BeforeEach
-        void init() {
-            mockServer = MockRestServiceServer.createServer(restTemplate);
-        }
-        @BeforeEach
-        public void simulaRespuesta() {
-            var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/1/usuarios")
-                    .build()
-                    .toUri();
-            mockServer.expect(requestTo(uriRemota))
-                    .andExpect(method(HttpMethod.GET))
-                    .andRespond(withStatus(HttpStatus.OK)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(
-                                    """
-                                    [
-                                      {
-                                        "nombre": "Antonio",
-                                        "apellido1": "García",
-                                        "apellido2": "Ramos",
-                                        "email": "antonio@uma.es",
-                                        "role": "CLIENTE",
-                                        "id": 2
-                                      },
-                                      {
-                                        "nombre": "Victoria",
-                                        "apellido1": "Rodríguez",
-                                        "apellido2": "Fernández",
-                                        "email": "victoria@uma.es",
-                                        "role": "CLIENTE",
-                                        "id": 3
-                                      }
-                                    ]
-                                    """
-                            )
-                    );
-        }
         @Test
         @DisplayName("devuelve la lista de activos vacía")
         public void devuelveLista() {
+            simulaRespuestaUsuariosCuentaUno();
             List<Long> idCuentaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCuenta", idCuentaValues);
             var respuesta = testRestTemplate.exchange(peticion,
@@ -240,6 +300,8 @@ public class AssetManagementApplicationTests {
         @Test
         @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta")
         public void creaActivo() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
             Activo activo = Activo.builder()
                     .nombre("Imagen del ordenador")
                     .tipo("JPG")
@@ -255,6 +317,7 @@ public class AssetManagementApplicationTests {
         @Test
         @DisplayName("devuelve error si no se tiene acceso a la cuenta")
         public void devuelveError() {
+            simulaRespuestaUsuariosCuentaTres();
             Activo activo = Activo.builder()
                     .nombre("Imagen del ordenador")
                     .tipo("JPG")
@@ -272,6 +335,11 @@ public class AssetManagementApplicationTests {
     @Nested
     @DisplayName("cuando no hay categorias")
     class CategoriasVacias {
+        @BeforeEach
+        public void setUp() {
+            simulaRespuestaUsuariosCuentaUno();
+        }
+
         @Test
         @DisplayName("devuelve la lista de categorías vacía a partir de un idCuenta")
         public void devuelveListaAPartirDeIdCuenta() {
@@ -306,6 +374,7 @@ public class AssetManagementApplicationTests {
         @Test
         @DisplayName("devuelve una categoría concreta si tiene permiso")
         public void devuelveCategoria() {
+            simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
             var respuesta = testRestTemplate.exchange(peticion,
@@ -318,6 +387,7 @@ public class AssetManagementApplicationTests {
         @Test
         @DisplayName("devuelve error si no se tiene acceso a la cuenta de la categoría")
         public void devuelveErrorCategoria() {
+            simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, "idCategoria", idCategoriaValues);
             var respuesta = testRestTemplate.exchange(peticion,
