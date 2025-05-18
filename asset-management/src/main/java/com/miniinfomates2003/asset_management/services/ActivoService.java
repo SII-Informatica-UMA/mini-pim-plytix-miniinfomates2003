@@ -220,7 +220,11 @@ public class ActivoService {
 
         activo.setCategorias(updatedCategorias);
 
-        if(activo.getCategorias() != null && !activo.getCategorias().isEmpty()){
+        // activo.getCategorias() == null nunca se evaluará a true
+        // en la linea previa hacemos activo.setCategorias(updatedCategorias);
+        // por lo que, en el peor de los casos, sera una coleccion vacia
+
+        if(!activo.getCategorias().isEmpty()){
             for(Categoria categoria : activo.getCategorias()) {
                 Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
                         .orElseThrow(NotFoundException::new);
