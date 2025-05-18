@@ -69,8 +69,6 @@ public class CategoriaController {
             } else {
                 return ResponseEntity.badRequest().build();
             }
-        } catch (TokenMissingException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (NoAccessException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (NotFoundException e) {

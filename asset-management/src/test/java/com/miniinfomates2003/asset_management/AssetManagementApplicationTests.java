@@ -6,6 +6,7 @@ import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.repositories.ActivoRepository;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
+import com.miniinfomates2003.asset_management.services.CuentaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -385,7 +386,7 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
-        @DisplayName("devuelve error si no se tiene acceso a la cuenta de la categoría")
+        @DisplayName("devuelve error si no se tiene acceso a la cuenta de una categoría concreta")
         public void devuelveErrorCategoria() {
             simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
@@ -393,6 +394,43 @@ public class AssetManagementApplicationTests {
             var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {
                     });
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve error 404 si no existe una categoría concreta")
+        public void devuelveErrorCategoriaNoExiste() {
+            simulaRespuestaUsuariosCuentaUno();
+            List<Long> idCategoriaValues = List.of(5L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {
+                    });
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve categorías asociadas a una cuenta si se tiene acceso")
+        public void devuelveCategorias() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCuentaValues = List.of(3L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCuenta", idCuentaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+        @Test
+        @DisplayName("devuelve error al intentar acceder a las categorías de una cuenta a la que no se tiene acceso")
+        public void devuelveErrorCategoriasCuenta() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCuentaValues = List.of(3L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, "idCuenta", idCuentaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
