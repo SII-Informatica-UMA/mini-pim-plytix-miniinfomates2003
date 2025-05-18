@@ -15,20 +15,26 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriBuilderFactory;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -37,7 +43,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class AssetManagementApplicationTests {
 
     @Autowired
-    private TestRestTemplate restTemplate;
+    private TestRestTemplate testRestTemplate;
+
+    @Autowired
+    private RestTemplate restTemplate;
+    private MockRestServiceServer mockServer;
 
     @Value(value = "${local.server.port}")
     private int port;
@@ -47,6 +57,9 @@ public class AssetManagementApplicationTests {
 
     @Value(value = "${tokenVictoria}")
     private String tokenVictoria;
+
+    @Value(value = "${baseURL}")
+    private String baseURL;
 
     @Autowired
     private ActivoRepository activoRepository;
@@ -59,6 +72,7 @@ public class AssetManagementApplicationTests {
         activoRepository.deleteAll();
         categoriaRepository.deleteAll();
     }
+
 
     private URI uri(String scheme, String host, int port, String... paths) {
         UriBuilderFactory ubf = new DefaultUriBuilderFactory();
@@ -159,13 +173,51 @@ public class AssetManagementApplicationTests {
     @Nested
     @DisplayName("cuando no hay activos")
     class ActivosVacio {
+        @BeforeEach
+        void init() {
+            mockServer = MockRestServiceServer.createServer(restTemplate);
+        }
+        @BeforeEach
+        public void simulaRespuesta() {
+            var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/1/usuarios")
+                    .build()
+                    .toUri();
+            mockServer.expect(requestTo(uriRemota))
+                    .andExpect(method(HttpMethod.GET))
+                    .andRespond(withStatus(HttpStatus.OK)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(
+                                    """
+                                    [
+                                      {
+                                        "nombre": "Antonio",
+                                        "apellido1": "García",
+                                        "apellido2": "Ramos",
+                                        "email": "antonio@uma.es",
+                                        "role": "CLIENTE",
+                                        "id": 2
+                                      },
+                                      {
+                                        "nombre": "Victoria",
+                                        "apellido1": "Rodríguez",
+                                        "apellido2": "Fernández",
+                                        "email": "victoria@uma.es",
+                                        "role": "CLIENTE",
+                                        "id": 3
+                                      }
+                                    ]
+                                    """
+                            )
+                    );
+        }
         @Test
         @DisplayName("devuelve la lista de activos vacía")
         public void devuelveLista() {
             List<Long> idCuentaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCuenta", idCuentaValues);
-            var respuesta = restTemplate.exchange(peticion,
-                    new ParameterizedTypeReference<List<ActivoDTO>>() {});
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<ActivoDTO>>() {
+                    });
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.getBody()).isEmpty();
         }
@@ -195,7 +247,7 @@ public class AssetManagementApplicationTests {
                     .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
                     .build();
             var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
-            var respuesta = restTemplate.exchange(peticion,
+            var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<ActivoDTO>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
             assertThat(respuesta.getBody()).isNotNull();
@@ -210,7 +262,7 @@ public class AssetManagementApplicationTests {
                     .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
                     .build();
             var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(3L));
-            var respuesta = restTemplate.exchange(peticion,
+            var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<ActivoDTO>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
@@ -225,7 +277,7 @@ public class AssetManagementApplicationTests {
         public void devuelveListaAPartirDeIdCuenta() {
             List<Long> idCuentaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCuenta", idCuentaValues);
-            var respuesta = restTemplate.exchange(peticion,
+            var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.getBody()).isEmpty();
@@ -236,7 +288,7 @@ public class AssetManagementApplicationTests {
         public void devuelveListaAPartirDeIdCategoria() {
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
-            var respuesta = restTemplate.exchange(peticion,
+            var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
             assertThat(respuesta.hasBody()).isEqualTo(false);
@@ -256,7 +308,7 @@ public class AssetManagementApplicationTests {
         public void devuelveCategoria() {
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
-            var respuesta = restTemplate.exchange(peticion,
+            var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.hasBody()).isEqualTo(true);
@@ -268,7 +320,7 @@ public class AssetManagementApplicationTests {
         public void devuelveErrorCategoria() {
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, "idCategoria", idCategoriaValues);
-            var respuesta = restTemplate.exchange(peticion,
+            var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {
                     });
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
