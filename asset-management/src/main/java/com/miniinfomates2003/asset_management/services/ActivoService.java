@@ -103,10 +103,6 @@ public class ActivoService {
 
                 categoriasActualizadas.add(managedCategoria);
 
-                if (managedCategoria.getActivos() == null) {
-                    managedCategoria.setActivos(new HashSet<>());
-                }
-
                 managedCategoria.getActivos().add(savedActivo);
                 categoriaRepository.save(managedCategoria);
             }
