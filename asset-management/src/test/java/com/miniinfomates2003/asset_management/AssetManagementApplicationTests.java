@@ -30,7 +30,9 @@ import org.springframework.web.util.UriBuilderFactory;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
@@ -342,25 +344,6 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
-        @Test
-        @DisplayName("se crea correctamente un activo cuando sus categorías y productos están a null")
-        public void creaActivo() {
-            simulaRespuestaUsuariosCuentaUno();
-            simulaRespuestaMaxNumActivosCuentaUno();
-            Activo activo = Activo.builder()
-                    .nombre("Imagen del ordenador")
-                    .tipo("JPG")
-                    .tamanio(1)
-                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
-                    .categorias(null)
-                    .idProductos(null)
-                    .build();
-            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
-            var respuesta = testRestTemplate.exchange(peticion,
-                    new ParameterizedTypeReference<ActivoDTO>() {});
-            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
-            assertThat(respuesta.getBody()).isNotNull();
-        }
     }
 
     @Nested
@@ -531,6 +514,49 @@ public class AssetManagementApplicationTests {
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("se crea correctamente un activo con categorías y productos")
+        public void creaActivo() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            categoriaRepository.save(new Categoria(null, "Manuales", 1, null));
+
+            // Crear set de categorías
+            Set<Categoria> categorias = new HashSet<>();
+            Categoria categoria1 = Categoria.builder()
+                    .id(2)
+                    .nombre("Manuales")
+                    .idCuenta(1)
+                    .build();
+            categorias.add(categoria1);
+
+            // Crear set de productos
+            Set<Integer> productos = new HashSet<>();
+            productos.add(1);
+            productos.add(2);
+
+            // Crear el activo con las categorías y productos
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .categorias(categorias)
+                    .idProductos(productos)
+                    .build();
+
+            // Act
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo",
+                    tokenVictoria, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+
+            // Assert
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+            assertThat(respuesta.getBody()).isNotNull();
         }
     }
 }

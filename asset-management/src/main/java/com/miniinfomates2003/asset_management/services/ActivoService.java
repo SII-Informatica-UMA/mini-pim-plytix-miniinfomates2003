@@ -88,13 +88,9 @@ public class ActivoService {
         if (maxNumActivos.equals(numActivosActualmente)) {
             throw new NoAccessException();
         }
-       
+
         activo.setId(null);
         Activo savedActivo = activoRepository.save(activo);
-
-        if (savedActivo.getCategorias() == null) {
-            savedActivo.setCategorias(new HashSet<>());
-        }
 
         // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
         if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
