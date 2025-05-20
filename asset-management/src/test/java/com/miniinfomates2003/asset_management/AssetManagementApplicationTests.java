@@ -227,6 +227,15 @@ public class AssetManagementApplicationTests {
                 );
     }
 
+    public void simulaRespuestaUsuariosCuentaInexistente() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/99/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+    }
+
     public void simulaRespuestaMaxNumActivosCuentaUno() {
         var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
                 .queryParam("idCuenta", 1)
@@ -262,6 +271,41 @@ public class AssetManagementApplicationTests {
                         ));
     }
 
+    public void aniadeCuatroActivosCuentaUno() {
+        Activo activo2 = Activo.builder()
+                .nombre("Activo 2")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo2.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo2);
+        Activo activo3 = Activo.builder()
+                .nombre("Activo 3")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo3.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo3);
+        Activo activo4 = Activo.builder()
+                .nombre("Activo 4")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo4.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo4);
+        Activo activo5 = Activo.builder()
+                .nombre("Activo 5")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo5.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo5);
+    }
+
     @BeforeEach
     public void setUpMockServer() {
         mockServer = MockRestServiceServer.createServer(restTemplate);
@@ -282,10 +326,45 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.getBody()).isEmpty();
         }
+        @Test
+        @DisplayName("devuelve error al intentar crear un activo en una cuenta inexistente")
+        public void devuelveError() {
+            simulaRespuestaUsuariosCuentaInexistente();
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(99L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+        @Test
+        @DisplayName("se crea correctamente un activo cuando sus categorías y productos están a null")
+        public void creaActivo() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .categorias(null)
+                    .idProductos(null)
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
     }
 
     @Nested
-    @DisplayName("cuando hay activos y no se excede el número permitido")
+    @DisplayName("cuando hay activos")
     class HayActivos {
         @BeforeEach
         public void introduceDatos() {
@@ -299,7 +378,7 @@ public class AssetManagementApplicationTests {
             activoRepository.save(activo);
         }
         @Test
-        @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta")
+        @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta y no se excede el número permitido")
         public void creaActivo() {
             simulaRespuestaUsuariosCuentaUno();
             simulaRespuestaMaxNumActivosCuentaUno();
@@ -316,7 +395,7 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getBody()).isNotNull();
         }
         @Test
-        @DisplayName("devuelve error si no se tiene acceso a la cuenta")
+        @DisplayName("al intentar crear un nuevo activo devuelve error si no se tiene acceso a la cuenta")
         public void devuelveError() {
             simulaRespuestaUsuariosCuentaTres();
             Activo activo = Activo.builder()
@@ -326,6 +405,25 @@ public class AssetManagementApplicationTests {
                     .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
                     .build();
             var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(3L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+        @Test
+        @DisplayName("devuelve error si se intenta crear un nuevo activo y se excede el número permitido")
+        public void devuelveErrorMaxActivos() {
+            aniadeCuatroActivosCuentaUno();
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            Activo activo = Activo.builder()
+                    .nombre("Activo no permitido")
+                    .tipo("PDF")
+                    .tamanio(2)
+                    .url("https://mallba3.lcc.uma.es/activos/activo.pdf")
+                    .idCuenta(1)
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
             var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<ActivoDTO>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);

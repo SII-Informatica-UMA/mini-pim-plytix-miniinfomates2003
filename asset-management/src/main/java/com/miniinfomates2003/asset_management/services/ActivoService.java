@@ -88,13 +88,7 @@ public class ActivoService {
         if (maxNumActivos.equals(numActivosActualmente)) {
             throw new NoAccessException();
         }
-        // Inicializar colecciones si son nulas
-        if (activo.getCategorias() == null) {
-            activo.setCategorias(new HashSet<>());
-        }
-        if (activo.getIdProductos() == null) {
-            activo.setIdProductos(new HashSet<>());
-        }
+       
         activo.setId(null);
         Activo savedActivo = activoRepository.save(activo);
 
