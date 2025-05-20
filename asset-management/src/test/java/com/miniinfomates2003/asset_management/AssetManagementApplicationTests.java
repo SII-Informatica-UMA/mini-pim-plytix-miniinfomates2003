@@ -493,6 +493,24 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
+        @DisplayName("devuelve 400 cuando no se proporciona ningún parámetro en el queryString al obtener una categoría")
+        public void obtenerActivosSinParametrosDevuelveBadRequest() {
+            // Arrange
+            // No necesitamos configurar ningún mock porque el endpoint debería devolver BadRequest
+            // antes de llegar a cualquier lógica de servicio
+
+            // Act
+            // Realizar petición GET sin parámetros
+            var peticion = get("http", "localhost", port, "/categoria-activo", tokenAdmin);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+
+            // Assert
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
+            assertThat(respuesta.getBody()).isNull();
+        }
+
+        @Test
         @DisplayName("devuelve categorías asociadas a una cuenta si se tiene acceso")
         public void devuelveCategorias() {
             simulaRespuestaUsuariosCuentaTres();
