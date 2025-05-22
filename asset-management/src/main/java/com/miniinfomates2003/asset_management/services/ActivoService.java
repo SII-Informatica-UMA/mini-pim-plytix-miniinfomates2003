@@ -88,19 +88,9 @@ public class ActivoService {
         if (maxNumActivos.equals(numActivosActualmente)) {
             throw new NoAccessException();
         }
-        // Inicializar colecciones si son nulas
-        if (activo.getCategorias() == null) {
-            activo.setCategorias(new HashSet<>());
-        }
-        if (activo.getIdProductos() == null) {
-            activo.setIdProductos(new HashSet<>());
-        }
+
         activo.setId(null);
         Activo savedActivo = activoRepository.save(activo);
-
-        if (savedActivo.getCategorias() == null) {
-            savedActivo.setCategorias(new HashSet<>());
-        }
 
         // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
         if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
@@ -112,10 +102,6 @@ public class ActivoService {
                         .orElseThrow(NotFoundException::new);
 
                 categoriasActualizadas.add(managedCategoria);
-
-                if (managedCategoria.getActivos() == null) {
-                    managedCategoria.setActivos(new HashSet<>());
-                }
 
                 managedCategoria.getActivos().add(savedActivo);
                 categoriaRepository.save(managedCategoria);

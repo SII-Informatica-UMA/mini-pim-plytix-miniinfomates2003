@@ -13,6 +13,7 @@ import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 import com.miniinfomates2003.asset_management.services.ActivoService;
 import com.miniinfomates2003.asset_management.services.CuentaService;
+import com.miniinfomates2003.asset_management.services.CuentaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,9 +40,13 @@ import org.springframework.web.util.UriBuilderFactory;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -184,49 +189,155 @@ public class AssetManagementApplicationTests {
         return peticion;
     }
 
+    public void simulaRespuestaUsuariosCuentaUno() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/1/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                                """
+                                [
+                                  {
+                                    "nombre": "Antonio",
+                                    "apellido1": "García",
+                                    "apellido2": "Ramos",
+                                    "email": "antonio@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 2
+                                  },
+                                  {
+                                    "nombre": "Victoria",
+                                    "apellido1": "Rodríguez",
+                                    "apellido2": "Fernández",
+                                    "email": "victoria@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 3
+                                  }
+                                ]
+                                """
+                        )
+                );
+    }
+
+    public void simulaRespuestaUsuariosCuentaTres() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/3/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                                """
+                                [
+                                  {
+                                    "nombre": "Antonio",
+                                    "apellido1": "García",
+                                    "apellido2": "Ramos",
+                                    "email": "antonio@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 2
+                                  }
+                                ]
+                                """
+                        )
+                );
+    }
+
+    public void simulaRespuestaUsuariosCuentaInexistente() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/99/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+    }
+
+    public void simulaRespuestaMaxNumActivosCuentaUno() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
+                .queryParam("idCuenta", 1)
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                        """
+                                [
+                                  {
+                                    "id": 1,
+                                    "nombre": "Cuenta 1",
+                                    "direccion": "Calle Ficticia 123, Ciudad Ficticia",
+                                    "nif": "12345678B",
+                                    "fechaAlta": "2023-01-15",
+                                    "plan": {
+                                      "id": 1,
+                                      "nombre": "Plan Básico",
+                                      "maxProductos": 5,
+                                      "maxActivos": 5,
+                                      "maxAlmacenamiento": 5,
+                                      "maxCategoriasProductos": 3,
+                                      "maxCategoriasActivos": 3,
+                                      "maxRelaciones": 1,
+                                      "precio": 9.99
+                                    }
+                                  }
+                                ]
+                                """
+                        ));
+    }
+
+    public void aniadeCuatroActivosCuentaUno() {
+        Activo activo2 = Activo.builder()
+                .nombre("Activo 2")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo2.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo2);
+        Activo activo3 = Activo.builder()
+                .nombre("Activo 3")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo3.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo3);
+        Activo activo4 = Activo.builder()
+                .nombre("Activo 4")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo4.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo4);
+        Activo activo5 = Activo.builder()
+                .nombre("Activo 5")
+                .tipo("PDF")
+                .tamanio(2)
+                .url("https://mallba3.lcc.uma.es/activos/activo5.pdf")
+                .idCuenta(1)
+                .build();
+        activoRepository.save(activo5);
+    }
+
+    @BeforeEach
+    public void setUpMockServer() {
+        mockServer = MockRestServiceServer.createServer(restTemplate);
+    }
+
     @Nested
     @DisplayName("cuando no hay activos")
     class ActivosVacio {
-        @BeforeEach
-        void init() {
-            mockServer = MockRestServiceServer.createServer(restTemplate);
-        }
-        @BeforeEach
-        public void simulaRespuesta() {
-            var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/1/usuarios")
-                    .build()
-                    .toUri();
-            mockServer.expect(requestTo(uriRemota))
-                    .andExpect(method(HttpMethod.GET))
-                    .andRespond(withStatus(HttpStatus.OK)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(
-                                    """
-                                    [
-                                      {
-                                        "nombre": "Antonio",
-                                        "apellido1": "García",
-                                        "apellido2": "Ramos",
-                                        "email": "antonio@uma.es",
-                                        "role": "CLIENTE",
-                                        "id": 2
-                                      },
-                                      {
-                                        "nombre": "Victoria",
-                                        "apellido1": "Rodríguez",
-                                        "apellido2": "Fernández",
-                                        "email": "victoria@uma.es",
-                                        "role": "CLIENTE",
-                                        "id": 3
-                                      }
-                                    ]
-                                    """
-                            )
-                    );
-        }
         @Test
         @DisplayName("devuelve la lista de activos vacía")
         public void devuelveLista() {
+            simulaRespuestaUsuariosCuentaUno();
             List<Long> idCuentaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCuenta", idCuentaValues);
             var respuesta = testRestTemplate.exchange(peticion,
@@ -235,10 +346,26 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
             assertThat(respuesta.getBody()).isEmpty();
         }
+        @Test
+        @DisplayName("devuelve error al intentar crear un activo en una cuenta inexistente")
+        public void devuelveError() {
+            simulaRespuestaUsuariosCuentaInexistente();
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(99L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
     }
 
     @Nested
-    @DisplayName("cuando hay activos y no se excede el número permitido")
+    @DisplayName("cuando hay activos")
     class HayActivos {
         @BeforeEach
         public void introduceDatos() {
@@ -252,8 +379,10 @@ public class AssetManagementApplicationTests {
             activoRepository.save(activo);
         }
         @Test
-        @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta")
+        @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta y no se excede el número permitido")
         public void creaActivo() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
             Activo activo = Activo.builder()
                     .nombre("Imagen del ordenador")
                     .tipo("JPG")
@@ -267,8 +396,9 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getBody()).isNotNull();
         }
         @Test
-        @DisplayName("devuelve error si no se tiene acceso a la cuenta")
+        @DisplayName("al intentar crear un nuevo activo devuelve error si no se tiene acceso a la cuenta")
         public void devuelveError() {
+            simulaRespuestaUsuariosCuentaTres();
             Activo activo = Activo.builder()
                     .nombre("Imagen del ordenador")
                     .tipo("JPG")
@@ -281,11 +411,35 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
+        @Test
+        @DisplayName("devuelve error si se intenta crear un nuevo activo y se excede el número permitido")
+        public void devuelveErrorMaxActivos() {
+            aniadeCuatroActivosCuentaUno();
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            Activo activo = Activo.builder()
+                    .nombre("Activo no permitido")
+                    .tipo("PDF")
+                    .tamanio(2)
+                    .url("https://mallba3.lcc.uma.es/activos/activo.pdf")
+                    .idCuenta(1)
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
     }
 
     @Nested
     @DisplayName("cuando no hay categorias")
     class CategoriasVacias {
+        @BeforeEach
+        public void setUp() {
+            simulaRespuestaUsuariosCuentaUno();
+        }
+
         @Test
         @DisplayName("devuelve la lista de categorías vacía a partir de un idCuenta")
         public void devuelveListaAPartirDeIdCuenta() {
@@ -320,6 +474,7 @@ public class AssetManagementApplicationTests {
         @Test
         @DisplayName("devuelve una categoría concreta si tiene permiso")
         public void devuelveCategoria() {
+            simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
             var respuesta = testRestTemplate.exchange(peticion,
@@ -330,8 +485,9 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
-        @DisplayName("devuelve error si no se tiene acceso a la cuenta de la categoría")
+        @DisplayName("devuelve error si no se tiene acceso a la cuenta de una categoría concreta")
         public void devuelveErrorCategoria() {
+            simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, "idCategoria", idCategoriaValues);
             var respuesta = testRestTemplate.exchange(peticion,
@@ -339,6 +495,104 @@ public class AssetManagementApplicationTests {
                     });
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve error 404 si no existe una categoría concreta")
+        public void devuelveErrorCategoriaNoExiste() {
+            simulaRespuestaUsuariosCuentaUno();
+            List<Long> idCategoriaValues = List.of(5L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {
+                    });
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve 400 cuando no se proporciona ningún parámetro en el queryString al obtener una categoría")
+        public void obtenerActivosSinParametrosDevuelveBadRequest() {
+            // Arrange
+            // No necesitamos configurar ningún mock porque el endpoint debería devolver BadRequest
+            // antes de llegar a cualquier lógica de servicio
+
+            // Act
+            // Realizar petición GET sin parámetros
+            var peticion = get("http", "localhost", port, "/categoria-activo", tokenAdmin);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+
+            // Assert
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
+            assertThat(respuesta.getBody()).isNull();
+        }
+
+        @Test
+        @DisplayName("devuelve categorías asociadas a una cuenta si se tiene acceso")
+        public void devuelveCategorias() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCuentaValues = List.of(3L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCuenta", idCuentaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+        @Test
+        @DisplayName("devuelve error al intentar acceder a las categorías de una cuenta a la que no se tiene acceso")
+        public void devuelveErrorCategoriasCuenta() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCuentaValues = List.of(3L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, "idCuenta", idCuentaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("se crea correctamente un activo con categorías y productos")
+        public void creaActivo() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            categoriaRepository.save(new Categoria(null, "Manuales", 1, null));
+
+            // Crear set de categorías
+            Set<Categoria> categorias = new HashSet<>();
+            Categoria categoria1 = Categoria.builder()
+                    .id(2)
+                    .nombre("Manuales")
+                    .idCuenta(1)
+                    .build();
+            categorias.add(categoria1);
+
+            // Crear set de productos
+            Set<Integer> productos = new HashSet<>();
+            productos.add(1);
+            productos.add(2);
+
+            // Crear el activo con las categorías y productos
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .categorias(categorias)
+                    .idProductos(productos)
+                    .build();
+
+            // Act
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo",
+                    tokenVictoria, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+
+            // Assert
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+            assertThat(respuesta.getBody()).isNotNull();
         }
     }
 
