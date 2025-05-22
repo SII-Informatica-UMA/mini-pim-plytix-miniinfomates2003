@@ -184,7 +184,6 @@ public class AssetManagementApplicationTests {
         return peticion;
     }
 
-
     @Nested
     @DisplayName("cuando no hay activos")
     class ActivosVacio {
