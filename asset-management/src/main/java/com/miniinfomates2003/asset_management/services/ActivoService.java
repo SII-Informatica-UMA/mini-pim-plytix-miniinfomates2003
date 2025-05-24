@@ -215,10 +215,6 @@ public class ActivoService {
                 Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
                         .orElseThrow(NotFoundException::new);
 
-                if (managedCategoria.getActivos() == null) {
-                    managedCategoria.setActivos(new HashSet<>());
-                }
-
                 managedCategoria.getActivos().add(activo);
                 categoriaRepository.save(managedCategoria);
             }
@@ -238,15 +234,14 @@ public class ActivoService {
             throw new NoAccessException(); // Forbidden
         }
 
-        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+        if (!activo.getCategorias().isEmpty()) {
             for (Categoria categoria : activo.getCategorias()) {
                 Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
                         .orElseThrow(NotFoundException::new);
 
-                if (managedCategoria.getActivos() != null) {
-                    managedCategoria.getActivos().remove(activo);
-                    categoriaRepository.save(managedCategoria);
-                }
+                managedCategoria.getActivos().remove(activo);
+                categoriaRepository.save(managedCategoria);
+
             }
         }
 

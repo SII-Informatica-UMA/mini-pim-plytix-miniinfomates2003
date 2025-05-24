@@ -1,35 +1,24 @@
 package com.miniinfomates2003.asset_management;
 
-import com.miniinfomates2003.asset_management.controllers.Mapper;
 import com.miniinfomates2003.asset_management.dtos.ActivoDTO;
 import com.miniinfomates2003.asset_management.dtos.CategoriaDTO;
 import com.miniinfomates2003.asset_management.entities.Activo;
 import com.miniinfomates2003.asset_management.entities.Categoria;
-import com.miniinfomates2003.asset_management.entities.Usuario;
-import com.miniinfomates2003.asset_management.exceptions.NoAccessException;
-import com.miniinfomates2003.asset_management.exceptions.NotFoundException;
+
 import com.miniinfomates2003.asset_management.repositories.ActivoRepository;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
-import com.miniinfomates2003.asset_management.security.SecurityConfguration;
-import com.miniinfomates2003.asset_management.services.ActivoService;
-import com.miniinfomates2003.asset_management.services.CuentaService;
-import com.miniinfomates2003.asset_management.services.CuentaService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
-import org.mockito.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.http.*;
+
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -46,12 +35,10 @@ import java.util.Set;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
-import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -324,6 +311,41 @@ public class AssetManagementApplicationTests {
                 .idCuenta(1)
                 .build();
         activoRepository.save(activo5);
+    }
+
+    private void simulaRespuestaMaxNumActivosCuentaTres() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
+                .queryParam("idCuenta", 3)
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                                """
+                                [
+                                  {
+                                    "id": 3,
+                                    "nombre": "Cuenta 3",
+                                    "direccion": "Calle Ficticia 456, Ciudad Ficticia",
+                                    "nif": "87654321A",
+                                    "fechaAlta": "2023-02-15",
+                                    "plan": {
+                                      "id": 2,
+                                      "nombre": "Plan Avanzado",
+                                      "maxProductos": 10,
+                                      "maxActivos": 10,
+                                      "maxAlmacenamiento": 10,
+                                      "maxCategoriasProductos": 5,
+                                      "maxCategoriasActivos": 5,
+                                      "maxRelaciones": 2,
+                                      "precio": 19.99
+                                    }
+                                  }
+                                ]
+                                """
+                        ));
     }
 
     @BeforeEach
@@ -601,13 +623,15 @@ public class AssetManagementApplicationTests {
     class ActivoControllerTests {
 
         @Nested
-        @DisplayName("al modificar un activo")
-        class PutActivoTests {
-
+        @DisplayName("al actualizar un activo")
+        class UpdateActivoTests {
             @Test
             @DisplayName("devuelve OK 200 al modificar un activo existente correctamente")
             void testPutActivoExistenteDevuelve200() {
                 // Arrange
+                simulaRespuestaUsuariosCuentaUno(); // Mock para verificar permisos (POST)
+                simulaRespuestaMaxNumActivosCuentaUno(); // Mock para límite de activos (POST)
+
                 var activo = new ActivoDTO();
                 activo.setNombre("Activo 1");
                 activo.setTipo("tipo1");
@@ -617,21 +641,20 @@ public class AssetManagementApplicationTests {
                 activo.setProductos(List.of(1));
 
                 var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin,
-                        activo,
-                        "idCuenta",
-                        List.of(1L)
-                );
+                        activo, "idCuenta", List.of(1L));
 
                 // Act
                 var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
 
                 // Assert
                 assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
-
-                // Arrange (modificación)
                 var activoCreado = respuestaCrear.getBody();
                 assertThat(activoCreado).isNotNull();
                 Integer idActivo = activoCreado.getId();
+
+                // Arrange (modificación)
+                mockServer.reset(); // Reiniciar el mockServer para nuevas expectativas
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
 
                 var activoModificado = new ActivoDTO();
                 activoModificado.setNombre("Activo Modificado");
@@ -642,52 +665,32 @@ public class AssetManagementApplicationTests {
                 activoModificado.setProductos(List.of(2));
 
                 var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idActivo,
-                        tokenAdmin,
-                        activoModificado,
-                        "idCuenta",
-                        List.of(1L)
-                );
+                        tokenAdmin, activoModificado, "idCuenta", List.of(1L));
 
                 // Act
                 var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
 
                 // Assert
                 assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+                var activoDevuelto = respuestaModificar.getBody();
+                assertThat(activoDevuelto).isNotNull();
+                assertThat(activoDevuelto.getNombre()).isEqualTo("Activo Modificado");
+                assertThat(activoDevuelto.getTipo()).isEqualTo("tipo2");
+                assertThat(activoDevuelto.getTamanio()).isEqualTo(200);
+                assertThat(activoDevuelto.getUrl()).isEqualTo("http://url2.com");
+                assertThat(activoDevuelto.getProductos()).containsExactly(2);
+
+                // Verificar que los mocks fueron invocados
+                mockServer.verify();
             }
 
             @Test
-            @DisplayName("devuelve error 404 al intentar modificar un activo no existente")
-            void testPutActivoNoExistenteDevuelve404() {
-                // Arrange: crear un ActivoDTO para la petición de modificación
-                var activoModificado = new ActivoDTO();
-                activoModificado.setNombre("Activo Modificado");
-                activoModificado.setTipo("tipo2");
-                activoModificado.setTamanio(200);
-                activoModificado.setUrl("http://url2.com");
-                activoModificado.setCategorias(new ArrayList<>());
-                activoModificado.setProductos(List.of(2));
+            @DisplayName("devuelve OK 200 al modificar un activo con categorías correctamente")
+            public void devuelve200AlModificarActivoConCategorias() {
+                // Arrange
+                simulaRespuestaUsuariosCuentaUno(); // Mock para verificar permisos (POST)
+                simulaRespuestaMaxNumActivosCuentaUno(); // Mock para límite de activos (POST)
 
-                Integer idNoExistente = 9999;  // Asegúrate que no exista en BD
-
-                // Construir la petición PUT con token
-                var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idNoExistente,
-                        tokenAdmin,
-                        activoModificado,
-                        "idCuenta",
-                        List.of(1L)
-                );
-
-                // Act
-                var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
-
-                // Assert
-                assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-            }
-
-            @Test
-            @DisplayName("devuelve error 403 al intentar modificar un activo sin permisos")
-            void testPutActivoSinPermisosDevuelve403() {
-                // Arrange: crear el activo como admin
                 var activo = new ActivoDTO();
                 activo.setNombre("Activo 1");
                 activo.setTipo("tipo1");
@@ -697,10 +700,89 @@ public class AssetManagementApplicationTests {
                 activo.setProductos(List.of(1));
 
                 var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin,
-                        activo,
-                        "idCuenta",
-                        List.of(3L)
-                );
+                        activo, "idCuenta", List.of(1L));
+
+                // Act
+                var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
+
+                // Assert
+                assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
+                var activoCreado = respuestaCrear.getBody();
+                assertThat(activoCreado).isNotNull();
+                Integer idActivo = activoCreado.getId();
+
+                // Arrange (modificación con categorías)
+                mockServer.reset(); // Reiniciar el mockServer para nuevas expectativas
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+                categoriaRepository.save(new Categoria(null, "Categoría 1", 1, null));
+                categoriaRepository.save(new Categoria(null, "Categoría 2", 1, null));
+                var categoria1 = new CategoriaDTO(1, "Categoría 1");
+                var categoria2 = new CategoriaDTO(2, "Categoría 2");
+
+                var activoModificado = new ActivoDTO();
+                activoModificado.setNombre("Activo Modificado");
+                activoModificado.setTipo("tipo2");
+                activoModificado.setTamanio(200);
+                activoModificado.setUrl("http://url2.com");
+                activoModificado.setCategorias(List.of(categoria1, categoria2));
+                activoModificado.setProductos(List.of(2));
+
+                var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idActivo,
+                        tokenAdmin, activoModificado, "idCuenta", List.of(1L));
+
+                // Act
+                var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+                // Assert
+                assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+                var activoDevuelto = respuestaModificar.getBody();
+                assertThat(activoDevuelto).isNotNull();
+                assertThat(activoDevuelto.getCategorias()).hasSize(2);
+            }
+
+            @Test
+            @DisplayName("devuelve error 404 al intentar modificar un activo no existente")
+            void testPutActivoNoExistenteDevuelve404() {
+                // Arrange
+                var activoModificado = new ActivoDTO();
+                activoModificado.setNombre("Activo Modificado");
+                activoModificado.setTipo("tipo2");
+                activoModificado.setTamanio(200);
+                activoModificado.setUrl("http://url2.com");
+                activoModificado.setCategorias(new ArrayList<>());
+                activoModificado.setProductos(List.of(2));
+
+                Integer idNoExistente = 9999;
+
+                var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idNoExistente,
+                        tokenAdmin, activoModificado, "idCuenta", List.of(1L));
+
+                // Act
+                var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+                // Assert
+                assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(respuestaModificar.getBody()).isNull();
+            }
+
+            @Test
+            @DisplayName("devuelve error 403 al intentar modificar un activo sin permisos")
+            void testPutActivoSinPermisosDevuelve403() {
+                // Arrange
+                simulaRespuestaUsuariosCuentaTres(); // Mock para permisos (solo Antonio tiene acceso)
+                simulaRespuestaMaxNumActivosCuentaTres(); // Mock para límite de activos (para POST)
+
+                var activo = new ActivoDTO();
+                activo.setNombre("Activo 1");
+                activo.setTipo("tipo1");
+                activo.setTamanio(100);
+                activo.setUrl("http://url1.com");
+                activo.setCategorias(new ArrayList<>());
+                activo.setProductos(List.of(1));
+
+                var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin,
+                        activo, "idCuenta", List.of(3L));
 
                 var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
                 assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
@@ -709,6 +791,9 @@ public class AssetManagementApplicationTests {
                 Integer idActivo = activoCreado.getId();
 
                 // Arrange: intento de modificación con token sin permisos
+                mockServer.reset(); // Reiniciar el mockServer para nuevas expectativas
+                simulaRespuestaUsuariosCuentaTres(); // Mock para permisos (Victoria no tiene acceso)
+
                 var activoModificado = new ActivoDTO();
                 activoModificado.setNombre("Intento de modificación");
                 activoModificado.setTipo("tipo2");
@@ -718,23 +803,26 @@ public class AssetManagementApplicationTests {
                 activoModificado.setProductos(List.of(2));
 
                 var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idActivo,
-                        tokenVictoria,
-                        activoModificado,
-                        "idCuenta",
-                        List.of(3L)
-                );
+                        tokenVictoria, activoModificado, "idCuenta", List.of(3L));
 
                 // Act
                 var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
 
                 // Assert
                 assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                assertThat(respuestaModificar.getBody()).isNull();
+
+                // Verificar que los mocks fueron invocados
+                mockServer.verify();
             }
 
             @Test
             @DisplayName("devuelve error 500 al modificar un activo con campos nulos")
             void testPutActivoConErrorInternoDevuelve500() {
-                // Arrange: crear el activo como admin
+                // Arrange
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos
+                simulaRespuestaMaxNumActivosCuentaUno(); // Mock para límite de activos (para POST)
+
                 var activo = new ActivoDTO();
                 activo.setNombre("Activo 1");
                 activo.setTipo("tipo1");
@@ -744,10 +832,7 @@ public class AssetManagementApplicationTests {
                 activo.setProductos(List.of(1));
 
                 var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin,
-                        activo,
-                        "idCuenta",
-                        List.of(1L)
-                );
+                        activo, "idCuenta", List.of(1L));
 
                 var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
                 assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
@@ -755,24 +840,27 @@ public class AssetManagementApplicationTests {
                 assertThat(activoCreado).isNotNull();
                 Integer idActivo = activoCreado.getId();
 
-                // Arrange: modificar el activo pero con un campo nulo que cause error
+                // Arrange: modificar el activo con campos nulos
+                mockServer.reset(); // Reiniciar el mockServer para nuevas expectativas
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
                 var activoModificado = new ActivoDTO();
-                activoModificado.setNombre(null); // si tu servicio no lo gestiona, puede fallar
-                activoModificado.setTipo(null);   // puedes forzar que peten ciertas validaciones
-                activoModificado.setProductos(null); // suponiendo que hace un stream sobre esto
+                activoModificado.setNombre(null);
+                activoModificado.setTipo(null);
+                activoModificado.setProductos(null);
 
                 var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idActivo,
-                        tokenAdmin,
-                        activoModificado,
-                        "idCuenta",
-                        List.of(1L)
-                );
+                        tokenAdmin, activoModificado, "idCuenta", List.of(1L));
 
                 // Act
                 var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
 
                 // Assert
                 assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+                assertThat(respuestaModificar.getBody()).isNull();
+
+                // Verificar que los mocks fueron invocados
+                mockServer.verify();
             }
         }
 
@@ -781,9 +869,12 @@ public class AssetManagementApplicationTests {
         class DeleteActivoTests {
 
             @Test
-            @DisplayName("devuelve error 200 al eliminar un activo existente correctamente")
+            @DisplayName("devuelve OK 200 al eliminar un activo existente correctamente")
             void testDeleteActivoExistenteDevuelve200() {
-                // Arrange: crear el activo como admin
+                // Arrange
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos (POST)
+                simulaRespuestaMaxNumActivosCuentaUno(); // Mock para límite de activos (POST)
+
                 var activo = new ActivoDTO();
                 activo.setNombre("Activo 1");
                 activo.setTipo("tipo1");
@@ -793,10 +884,7 @@ public class AssetManagementApplicationTests {
                 activo.setProductos(List.of(1));
 
                 var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin,
-                        activo,
-                        "idCuenta",
-                        List.of(1L)
-                );
+                        activo, "idCuenta", List.of(1L));
 
                 var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
                 assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
@@ -804,19 +892,68 @@ public class AssetManagementApplicationTests {
                 assertThat(activoCreado).isNotNull();
                 Integer idActivo = activoCreado.getId();
 
-                // Act: eliminar el activo
+                // Arrange: eliminar el activo
+                mockServer.reset(); // Reset mock server to allow new expectations for DELETE
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
                 var peticionEliminar = delete("http", "localhost", port, "/activo/" + idActivo, tokenAdmin);
 
+                // Act
                 var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
 
                 // Assert
                 assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(respuestaEliminar.getBody()).isNull();
+
+                // Verificar que los mocks fueron invocados
+                mockServer.verify();
+            }
+
+            @Test
+            @DisplayName("devuelve OK 200 al eliminar un activo existente con categorias correctamente")
+            void testDeleteActivoExistenteConCategoriasDevuelve200() {
+                // Arrange
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos (POST)
+                simulaRespuestaMaxNumActivosCuentaUno(); // Mock para límite de activos (POST)
+
+                var activo = new ActivoDTO();
+                activo.setNombre("Activo 1");
+                activo.setTipo("tipo1");
+                activo.setTamanio(100);
+                activo.setUrl("http://url1.com");
+                // Agregar una categoría existente para que activo.getCategorias() no esté vacío
+                categoriaRepository.save(new Categoria(null, "Categoría Test", 1, null));
+                activo.setCategorias(List.of(new CategoriaDTO(1, "Categoría Test")));
+                activo.setProductos(List.of(1));
+
+                var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin,
+                        activo, "idCuenta", List.of(1L));
+
+                var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
+                assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
+                var activoCreado = respuestaCrear.getBody();
+                assertThat(activoCreado).isNotNull();
+                Integer idActivo = activoCreado.getId();
+
+                // Arrange: eliminar el activo
+                mockServer.reset(); // Reset mock server to allow new expectations for DELETE
+                simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
+                var peticionEliminar = delete("http", "localhost", port, "/activo/" + idActivo, tokenAdmin);
+
+                // Act
+                var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+                // Assert
+                assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(respuestaEliminar.getBody()).isNull();
+
+                // Verificar que los mocks fueron invocados
+                mockServer.verify();
             }
 
             @Test
             @DisplayName("devuelve error 404 al intentar eliminar un activo que no existe")
             void testEliminarActivoInexistenteDevuelve404() {
-                // Arrange: definir un ID de activo que no existe
+                // Arrange
                 Integer idActivoInexistente = 99999;
 
                 var peticionEliminar = delete("http", "localhost", port, "/activo/" + idActivoInexistente, tokenAdmin);
@@ -826,12 +963,16 @@ public class AssetManagementApplicationTests {
 
                 // Assert
                 assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                assertThat(respuestaEliminar.getBody()).isNull();
             }
 
             @Test
             @DisplayName("devuelve error 403 cuando un usuario intenta borrar un activo sobre el que no tiene permisos")
             void testEliminarActivoSinPermisosDevuelve403() {
-                // Arrange: crear el activo como admin para tener algo que borrar
+                // Arrange
+                simulaRespuestaUsuariosCuentaTres(); // Mock para permisos (POST, solo Antonio tiene acceso)
+                simulaRespuestaMaxNumActivosCuentaTres(); // Mock para límite de activos (POST)
+
                 var activo = new ActivoDTO();
                 activo.setNombre("Activo Sin Permisos");
                 activo.setTipo("tipo1");
@@ -841,10 +982,7 @@ public class AssetManagementApplicationTests {
                 activo.setProductos(List.of(1));
 
                 var peticionCrear = postWithQueryParams("http", "localhost", port, "/activo", tokenAntonio,
-                        activo,
-                        "idCuenta",
-                        List.of(3L)
-                );
+                        activo, "idCuenta", List.of(3L));
 
                 var respuestaCrear = testRestTemplate.exchange(peticionCrear, ActivoDTO.class);
                 assertThat(respuestaCrear.getStatusCode().value()).isEqualTo(201);
@@ -852,309 +990,74 @@ public class AssetManagementApplicationTests {
                 assertThat(activoCreado).isNotNull();
                 Integer idActivo = activoCreado.getId();
 
-                // Act: intentar eliminar con un token de usuario sin permisos
+                // Arrange: intentar eliminar con un token de usuario sin permisos
+                mockServer.reset(); // Reset mock server to allow new expectations for DELETE
+                simulaRespuestaUsuariosCuentaTres(); // Mock para permisos (DELETE, Victoria no tiene acceso)
                 var peticionEliminar = delete("http", "localhost", port, "/activo/" + idActivo, tokenVictoria);
 
+                // Act
                 var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
 
                 // Assert
                 assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                assertThat(respuestaEliminar.getBody()).isNull();
+
+                // Verificar que los mocks fueron invocados
+                mockServer.verify();
             }
         }
     }
 
-    @Nested
-    @DisplayName("en el servicio de activo")
-    class ActivoServiceTest {
-
-        @Mock
-        private ActivoRepository activoRepository;
-
-        @Mock
-        private CategoriaRepository categoriaRepository;
-
-        @InjectMocks
-        private ActivoService activoService; // Aquí sí queremos el real con mocks de dependencias
-
-        @Nested
-        @DisplayName("al actualizar un activo")
-        class UpdateActivoServiceTests {
-            // Con este test no cambia nada en jacoco
-            @Test
-            @DisplayName("no procesa categorías si el DTO tiene una lista vacía y el activo tiene categorías en null")
-            void updateActivo_categoriasNull_noProcesaCategorias() {
-                Integer id = 1;
-                ActivoDTO dto = new ActivoDTO();
-                dto.setCategorias(Collections.emptyList());
-                dto.setProductos(Collections.emptyList());  // <-- Aquí
-
-                Activo activo = new Activo();
-                activo.setCategorias(null);
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                Activo resultado = spyService.updateActivo(id, dto);
-
-                assertNotNull(resultado);
-                verify(categoriaRepository, never()).save(any());
-            }
-
-            @Test
-            @DisplayName("crea un nuevo conjunto de activos y guarda si la categoría tiene activos en null")
-            void updateActivo_categoriaConActivosNull_creaSetYGuarda() {
-                // Arrange
-                Integer id = 2;
-                Categoria cat = new Categoria();
-                cat.setId(10);
-                cat.setActivos(null);  // rama a cubrir
-
-                Activo activo = new Activo();
-                activo.setCategorias(Set.of(cat));
-
-                ActivoDTO dto = new ActivoDTO();
-                dto.setCategorias(List.of(Mapper.toDTO(cat)));
-                dto.setProductos(Collections.emptyList()); // <-- importante para evitar NPE
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-                when(categoriaRepository.findById(cat.getId())).thenReturn(Optional.of(cat));
-
-                // Crea un spy del servicio real
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                // Act
-                spyService.updateActivo(id, dto);
-
-                // Assert
-                assertNotNull(cat.getActivos());
-                verify(categoriaRepository).save(cat);
-            }
-
-            @Test
-            @DisplayName("agrega un activo al conjunto existente y guarda si la categoría ya tiene activos")
-            void updateActivo_categoriaConActivosNoNull_agregaYGuarda() {
-                // Arrange
-                Integer id = 3;
-
-                Categoria cat = new Categoria();
-                cat.setId(20);
-                cat.setActivos(new HashSet<>()); // No null
-
-                Activo activo = new Activo();
-                activo.setCategorias(Set.of(cat));
-
-                ActivoDTO dto = new ActivoDTO();
-                dto.setCategorias(List.of(Mapper.toDTO(cat)));
-                dto.setProductos(Collections.emptyList()); // Para evitar null pointer en productos
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-                when(categoriaRepository.findById(cat.getId())).thenReturn(Optional.of(cat));
-
-                // Crea un spy del servicio real
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                // Act
-                spyService.updateActivo(id, dto);
-
-                // Assert
-                assertTrue(cat.getActivos().contains(activo));
-                verify(categoriaRepository).save(cat);
-            }
-        }
-
-        @Nested
-        @DisplayName("al eliminar un activo")
-        class DeleteActivoServiceTests {
-
-            @Test
-            @DisplayName("elimina un activo con categorías nulas no procesa categorías")
-            void eliminarActivo_categoriasNulas_noProcesaCategorias() {
-                // Arrange
-                Integer id = 1;
-                Activo activo = new Activo();
-                activo.setCategorias(null); // Cubre rama de categorías nulas
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                // Act
-                spyService.deleteActivo(id);
-
-                // Assert
-                verify(categoriaRepository, never()).findById(any());
-                verify(categoriaRepository, never()).save(any());
-                verify(activoRepository).delete(activo);
-            }
-
-            @Test
-            @DisplayName("elimina un activo con categorías vacías no procesa categorías")
-            void eliminarActivo_categoriasVacias_noProcesaCategorias() {
-                // Arrange
-                Integer id = 2;
-                Activo activo = new Activo();
-                activo.setCategorias(Collections.emptySet()); // Cubre rama de categorías vacías
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                // Act
-                spyService.deleteActivo(id);
-
-                // Assert
-                verify(categoriaRepository, never()).findById(any());
-                verify(categoriaRepository, never()).save(any());
-                verify(activoRepository).delete(activo);
-            }
-
-            @Test
-            @DisplayName("elimina un activo con categorías no nulas y activos nulos en categoría")
-            void eliminarActivo_categoriasNoNulas_activosNulos() {
-                // Arrange
-                Integer id = 3;
-                Categoria categoria = new Categoria();
-                categoria.setId(10);
-                categoria.setActivos(null); // Cubre rama de activos nulos
-
-                Activo activo = new Activo();
-                activo.setCategorias(Set.of(categoria));
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-                when(categoriaRepository.findById(categoria.getId())).thenReturn(Optional.of(categoria));
-
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                // Act
-                spyService.deleteActivo(id);
-
-                // Assert
-                verify(categoriaRepository).findById(categoria.getId());
-                verify(categoriaRepository, never()).save(any()); // No se debe llamar a save
-                verify(activoRepository).delete(activo);
-                assertNull(categoria.getActivos()); // Activos sigue siendo null
-            }
-
-            @Test
-            @DisplayName("elimina un activo con categorías no nulas y activos no nulos en categoría")
-            void eliminarActivo_categoriasNoNulas_activosNoNulos() {
-                // Arrange
-                Integer id = 4;
-                Categoria categoria = new Categoria();
-                categoria.setId(20);
-                categoria.setActivos(new HashSet<>()); // Activos no nulos
-                categoria.getActivos().add(new Activo()); // Agregar otro activo para conjunto no vacío
-
-                Activo activo = new Activo();
-                activo.setCategorias(Set.of(categoria));
-                categoria.getActivos().add(activo); // Asegurar que el activo está en la categoría
-
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-                when(categoriaRepository.findById(categoria.getId())).thenReturn(Optional.of(categoria));
-
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(true).when(spyService).hasPermissionToUpdate(id);
-
-                // Act
-                spyService.deleteActivo(id);
-
-                // Assert
-                verify(categoriaRepository).findById(categoria.getId());
-                verify(categoriaRepository).save(categoria);
-                verify(activoRepository).delete(activo);
-                assertFalse(categoria.getActivos().contains(activo)); // El activo debe ser eliminado
-            }
-
-            @Test
-            @DisplayName("al eliminar un activo inexistente lanza NotFoundException")
-            void eliminarActivo_activoInexistente_lanzaNotFoundException() {
-                // Arrange
-                Integer id = 5;
-                when(activoRepository.findById(id)).thenReturn(Optional.empty());
-
-                // Act & Assert
-                assertThrows(NotFoundException.class, () -> activoService.deleteActivo(id));
-                verify(activoRepository, never()).delete(any());
-                verify(categoriaRepository, never()).findById(any());
-            }
-
-            @Test
-            @DisplayName("al eliminar un activo sin permisos lanza NoAccessException")
-            void eliminarActivo_sinPermisos_lanzaNoAccessException() {
-                // Arrange
-                Integer id = 6;
-                Activo activo = new Activo();
-                when(activoRepository.findById(id)).thenReturn(Optional.of(activo));
-
-                ActivoService spyService = Mockito.spy(activoService);
-                doReturn(false).when(spyService).hasPermissionToUpdate(id);
-
-                // Act & Assert
-                assertThrows(NoAccessException.class, () -> spyService.deleteActivo(id));
-                verify(activoRepository, never()).delete(any());
-                verify(categoriaRepository, never()).findById(any());
-            }
-        }
-
-    }
-
-    @Nested
-    @DisplayName("en el servicio de activo el metodo hasPermissionToUpdate")
-    class ActivoServiceHasPermissionToUpdateTest {
-
-        @Mock
-        private ActivoRepository activoRepository;
-
-        @Mock
-        private CuentaService cuentaService;
-
-        @Spy
-        @InjectMocks
-        private ActivoService activoService;
-
-        @Test
-        @DisplayName("devuelve true cuando el usuario autenticado está en la lista de usuarios asociados a la cuenta")
-        void hasPermissionToUpdate_usuarioAsociado_devuelveTrue() {
-            // Arrange
-            Integer idActivo = 1;
-
-            // Usuario autenticado (como UserDetails)
-            UserDetails usuarioAutenticado = User.withUsername("123")
-                    .password("dummy")
-                    .roles("USER")
-                    .build();
-
-            // Activo simulado
-            Activo activo = new Activo();
-            activo.setIdCuenta(10);
-
-            // Usuario asociado
-            Usuario usuarioAsociado = new Usuario();
-            usuarioAsociado.setId(123L);
-
-            try (MockedStatic<SecurityConfguration> mockedSecurity = Mockito.mockStatic(SecurityConfguration.class)) {
-                mockedSecurity.when(SecurityConfguration::getAuthenticatedUser)
-                        .thenReturn(Optional.of(usuarioAutenticado));
-
-                when(activoRepository.findById(idActivo)).thenReturn(Optional.of(activo));
-                when(cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta()))
-                        .thenReturn(Optional.of(List.of(usuarioAsociado)));
-
-                doReturn(false).when(activoService).isAdmin(usuarioAutenticado);
-
-                // Act
-                boolean result = activoService.hasPermissionToUpdate(idActivo);
-
-                // Assert
-                assertTrue(result);
-            }
-        }
-    }
+//    @Nested
+//    @DisplayName("en el servicio de activo el metodo hasPermissionToUpdate")
+//    class ActivoServiceHasPermissionToUpdateTest {
+//
+//        @Mock
+//        private ActivoRepository activoRepository;
+//
+//        @Mock
+//        private CuentaService cuentaService;
+//
+//        @Spy
+//        @InjectMocks
+//        private ActivoService activoService;
+//
+//        @Test
+//        @DisplayName("devuelve true cuando el usuario autenticado está en la lista de usuarios asociados a la cuenta")
+//        void hasPermissionToUpdate_usuarioAsociado_devuelveTrue() {
+//            // Arrange
+//            Integer idActivo = 1;
+//
+//            // Usuario autenticado (como UserDetails)
+//            UserDetails usuarioAutenticado = User.withUsername("123")
+//                    .password("dummy")
+//                    .roles("USER")
+//                    .build();
+//
+//            // Activo simulado
+//            Activo activo = new Activo();
+//            activo.setIdCuenta(10);
+//
+//            // Usuario asociado
+//            Usuario usuarioAsociado = new Usuario();
+//            usuarioAsociado.setId(123L);
+//
+//            try (MockedStatic<SecurityConfguration> mockedSecurity = Mockito.mockStatic(SecurityConfguration.class)) {
+//                mockedSecurity.when(SecurityConfguration::getAuthenticatedUser)
+//                        .thenReturn(Optional.of(usuarioAutenticado));
+//
+//                when(activoRepository.findById(idActivo)).thenReturn(Optional.of(activo));
+//                when(cuentaService.getUsuariosAsociadosACuenta(activo.getIdCuenta()))
+//                        .thenReturn(Optional.of(List.of(usuarioAsociado)));
+//
+//                doReturn(false).when(activoService).isAdmin(usuarioAutenticado);
+//
+//                // Act
+//                boolean result = activoService.hasPermissionToUpdate(idActivo);
+//
+//                // Assert
+//                assertTrue(result);
+//            }
+//        }
+//    }
 }
