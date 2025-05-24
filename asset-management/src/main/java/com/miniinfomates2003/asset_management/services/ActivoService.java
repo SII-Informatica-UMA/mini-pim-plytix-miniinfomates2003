@@ -88,19 +88,9 @@ public class ActivoService {
         if (maxNumActivos.equals(numActivosActualmente)) {
             throw new NoAccessException();
         }
-        // Inicializar colecciones si son nulas
-        if (activo.getCategorias() == null) {
-            activo.setCategorias(new HashSet<>());
-        }
-        if (activo.getIdProductos() == null) {
-            activo.setIdProductos(new HashSet<>());
-        }
+
         activo.setId(null);
         Activo savedActivo = activoRepository.save(activo);
-
-        if (savedActivo.getCategorias() == null) {
-            savedActivo.setCategorias(new HashSet<>());
-        }
 
         // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
         if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
@@ -112,10 +102,6 @@ public class ActivoService {
                         .orElseThrow(NotFoundException::new);
 
                 categoriasActualizadas.add(managedCategoria);
-
-                if (managedCategoria.getActivos() == null) {
-                    managedCategoria.setActivos(new HashSet<>());
-                }
 
                 managedCategoria.getActivos().add(savedActivo);
                 categoriaRepository.save(managedCategoria);
@@ -220,14 +206,14 @@ public class ActivoService {
 
         activo.setCategorias(updatedCategorias);
 
-        if(activo.getCategorias() != null && !activo.getCategorias().isEmpty()){
+        // activo.getCategorias() == null nunca se evaluará a true
+        // en la linea previa hacemos activo.setCategorias(updatedCategorias);
+        // por lo que, en el peor de los casos, sera una coleccion vacia
+
+        if(!activo.getCategorias().isEmpty()){
             for(Categoria categoria : activo.getCategorias()) {
                 Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
                         .orElseThrow(NotFoundException::new);
-
-                if (managedCategoria.getActivos() == null) {
-                    managedCategoria.setActivos(new HashSet<>());
-                }
 
                 managedCategoria.getActivos().add(activo);
                 categoriaRepository.save(managedCategoria);
@@ -248,15 +234,14 @@ public class ActivoService {
             throw new NoAccessException(); // Forbidden
         }
 
-        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+        if (!activo.getCategorias().isEmpty()) {
             for (Categoria categoria : activo.getCategorias()) {
                 Categoria managedCategoria = categoriaRepository.findById(categoria.getId())
                         .orElseThrow(NotFoundException::new);
 
-                if (managedCategoria.getActivos() != null) {
-                    managedCategoria.getActivos().remove(activo);
-                    categoriaRepository.save(managedCategoria);
-                }
+                managedCategoria.getActivos().remove(activo);
+                categoriaRepository.save(managedCategoria);
+
             }
         }
 
