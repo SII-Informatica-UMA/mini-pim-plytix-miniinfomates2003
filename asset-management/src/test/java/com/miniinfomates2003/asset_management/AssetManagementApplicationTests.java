@@ -618,12 +618,247 @@ public class AssetManagementApplicationTests {
     }
 
     @Nested
+    @DisplayName("al actualizar una categoría")
+    class UpdateCategoriaTests {
+
+        Categoria categoria;
+        Categoria categoriaSinAcceso;
+
+        @BeforeEach
+        public void introduceDatos() {
+            categoria = new Categoria(null, "OLD", 1, null);
+            categoriaRepository.save(categoria);
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al modificar una categoria existente correctamente")
+        void testPutCategoriaExistenteDevuelve200() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            var newCategoria = new CategoriaDTO();
+            newCategoria.setNombre("NEW");
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoria.getId(), tokenAdmin, newCategoria, "idCuenta",
+                    List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, CategoriaDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+            var categoriaRespuesta = respuestaModificar.getBody();
+            assertThat(categoriaRespuesta).isNotNull();
+            assertThat(categoriaRespuesta.getNombre()).isEqualTo("NEW");
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve Not Found 404 al intentar modificar una categoria no existente")
+        void testPutCategoriaExistenteDevuelve404() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            // Creamos la nueva categoría que intentará sustituir a la no existente
+            var newCategoria = new CategoriaDTO();
+            newCategoria.setNombre("NEW");
+
+            // Encontramos un ID que no exista en la lista de categorías
+            List<Categoria> categoriasBD = categoriaRepository.findAll();
+            int idNoValido = categoriasBD.size() + 1;
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + idNoValido, tokenAdmin, newCategoria, "idCuenta",
+                    List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, CategoriaDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(404);
+            List<Categoria> categoriasRespuesta = categoriaRepository.findAll();
+            assertThat(respuestaModificar.getBody()).isNull();
+
+            // Comprobamos que la lista de proyectos no ha sido alterada
+            assertThat(categoriasRespuesta).isEqualTo(categoriasBD);
+        }
+
+        @Test
+        @DisplayName("devuelve Forbidden 403 al intentar modificar una categoria a la que no se tiene acceso")
+        void testPutCategoriaDevuelve403() {
+            // Creamos una categoría a la que no tendremos acceso
+            categoriaSinAcceso = new Categoria(null, "SIN_ACCESO", 3, null);
+            categoriaRepository.save(categoriaSinAcceso);
+
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaTres(); // Mock para permisos en PUT
+
+            var newCategoria = new CategoriaDTO();
+            newCategoria.setNombre("NEW");
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoriaSinAcceso.getId(), tokenVictoria, newCategoria,
+                    "idCuenta", List.of(3L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, CategoriaDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(403);
+            assertThat(respuestaModificar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve Internal Server Error 500 al intentar modificar una categoria")
+        void testPutCategoriaDevuelve500() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            var newCategoria = new CategoriaDTO();
+            newCategoria.setNombre(null);
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoria.getId(), tokenAdmin, newCategoria,
+                    "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, CategoriaDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(500);
+            assertThat(respuestaModificar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+    }
+
+    @Nested
+    @DisplayName("al eliminar una categoría")
+    class DeleteCategoriaTests {
+
+        Categoria categoria;
+        Categoria categoriaSinAcceso;
+
+        @BeforeEach
+        public void introduceDatos() {
+            categoria = new Categoria(null, "EJEMPLO", 1, null);
+            categoriaRepository.save(categoria);
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al eliminar una categoria existente correctamente")
+        void testDeleteCategoriaExistenteDevuelve200() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
+
+            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoria.getId(), tokenAdmin, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode().value()).isEqualTo(200);
+            var categoriaRespuesta = respuestaEliminar.getBody();
+
+            // Comprobamos que se ha eliminado la categoría especificada
+            List<Categoria> categorias = categoriaRepository.findAll();
+            assertThat(categoria).isNotIn(categorias);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve Not Found 404 al intentar eliminar una categoria no existente")
+        void testPutCategoriaExistenteDevuelve404() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
+
+            // Encontramos un ID que no exista en la lista de categorías
+            List<Categoria> categoriasBD = categoriaRepository.findAll();
+            int idNoValido = categoriasBD.size() + 1;
+
+            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + idNoValido, tokenAdmin, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaDelete = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaDelete.getStatusCode().value()).isEqualTo(404);
+
+            // Comprobamos que la lista de categorías es la misma que al principio
+            List<Categoria> categoriasRespuesta = categoriaRepository.findAll();
+            assertThat(categoriasRespuesta).isEqualTo(categoriasBD);
+        }
+
+        @Test
+        @DisplayName("devuelve Forbidden 403 al intentar eliminar una categoria a la que no se tiene acceso")
+        void testDeleteCategoriaDevuelve403() {
+            // Creamos una categoría a la que no tendremos acceso
+            categoriaSinAcceso = new Categoria(null, "SIN_ACCESO", 3, null);
+            categoriaRepository.save(categoriaSinAcceso);
+
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaTres(); // Mock para permisos en DELETE
+
+            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoriaSinAcceso.getId(), tokenVictoria, "idCuenta",
+                    List.of(3L));
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode().value()).isEqualTo(403);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve Internal Server Error 500 al intentar eliminar una categoria")
+        void testDeleteCategoriaDevuelve500() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
+
+            ActivoDTO activoProblematico = new ActivoDTO();
+            activoProblematico.setNombre(null);
+            activoProblematico.setTipo(null);
+            activoProblematico.setProductos(null);
+            Set<ActivoDTO> activos = new HashSet<ActivoDTO>();
+            activos.add(activoProblematico);
+
+            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoria.getId(), tokenAdmin, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode().value()).isEqualTo(500);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+    }
+
+    @Nested
     @DisplayName("en el controlador de activo")
     class ActivoControllerTests {
 
         @Nested
         @DisplayName("al actualizar un activo")
         class UpdateActivoTests {
+
             @Test
             @DisplayName("devuelve OK 200 al modificar un activo existente correctamente")
             void testPutActivoExistenteDevuelve200() {
