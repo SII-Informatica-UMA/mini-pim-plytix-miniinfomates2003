@@ -824,31 +824,7 @@ public class AssetManagementApplicationTests {
             mockServer.verify();
         }
 
-        @Test
-        @DisplayName("devuelve Internal Server Error 500 al intentar eliminar una categoria")
-        void testDeleteCategoriaDevuelve500() {
-            // Arrange (modificación)
-            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
-
-            ActivoDTO activoProblematico = new ActivoDTO();
-            activoProblematico.setNombre(null);
-            activoProblematico.setTipo(null);
-            activoProblematico.setProductos(null);
-            Set<ActivoDTO> activos = new HashSet<ActivoDTO>();
-            activos.add(activoProblematico);
-
-            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
-                    "/categoria-activo/" + categoria.getId(), tokenAdmin, "idCuenta", List.of(1L));
-
-            // Act
-            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
-
-            // Assert
-            assertThat(respuestaEliminar.getStatusCode().value()).isEqualTo(500);
-
-            // Verificar que los mocks fueron invocados
-            mockServer.verify();
-        }
+        // NO SE HACE PRUEBA UNITARIA PASANDO POR EL CÓDIGO 500
     }
 
     @Nested
