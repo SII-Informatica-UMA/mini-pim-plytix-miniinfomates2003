@@ -503,6 +503,24 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
+        @DisplayName("permite crear un nuevo activo si es admin y no se excede el número permitido")
+        public void creaActivoAdmin() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
         @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta y no se excede el número permitido")
         public void creaActivo() {
             simulaRespuestaUsuariosCuentaUno();
@@ -805,11 +823,24 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
-        @DisplayName("devuelve una categoría concreta si tiene permiso")
+        @DisplayName("devuelve una categoría concreta si es admin")
         public void devuelveCategoria() {
             simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve una categoría concreta si es un usuario con permiso")
+        public void devuelveCategoriaUsuarioNormal() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCategoriaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAntonio, "idCategoria", idCategoriaValues);
             var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
@@ -862,7 +893,7 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
-        @DisplayName("devuelve categorías asociadas a una cuenta si se tiene acceso")
+        @DisplayName("devuelve categorías asociadas a una cuenta si es admin")
         public void devuelveCategorias() {
             simulaRespuestaUsuariosCuentaTres();
             List<Long> idCuentaValues = List.of(3L);
@@ -873,6 +904,20 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.hasBody()).isEqualTo(true);
             assertThat(respuesta.getBody()).isNotNull();
         }
+
+        @Test
+        @DisplayName("devuelve categorías asociadas a una cuenta si es un usuario concreto con permiso")
+        public void devuelveCategoriasUsuarioConcreto() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCuentaValues = List.of(3L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAntonio, "idCuenta", idCuentaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
         @Test
         @DisplayName("devuelve error al intentar acceder a las categorías de una cuenta a la que no se tiene acceso")
         public void devuelveErrorCategoriasCuenta() {
