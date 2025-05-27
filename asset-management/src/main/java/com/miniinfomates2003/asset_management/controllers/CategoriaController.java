@@ -111,8 +111,6 @@ public class CategoriaController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (NoAccessException nae) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
