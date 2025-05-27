@@ -36,6 +36,8 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
@@ -209,6 +211,31 @@ public class AssetManagementApplicationTests {
                 );
     }
 
+    public void simulaRespuestaUsuariosCuentaDos() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/2/usuarios")
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(
+                                """
+                                [
+                                  {
+                                    "nombre": "Victoria",
+                                    "apellido1": "Rodríguez",
+                                    "apellido2": "Fernández",
+                                    "email": "victoria@uma.es",
+                                    "role": "CLIENTE",
+                                    "id": 3
+                                  }
+                                ]
+                                """
+                        )
+                );
+    }
+
     public void simulaRespuestaUsuariosCuentaTres() {
         var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta/3/usuarios")
                 .build()
@@ -277,6 +304,7 @@ public class AssetManagementApplicationTests {
                                 """
                         ));
     }
+
     public void aniadeCuatroActivosCuentaUno() {
         Activo activo2 = Activo.builder()
                 .nombre("Activo 2")
@@ -346,7 +374,7 @@ public class AssetManagementApplicationTests {
                                 """
                         ));
     }
-  
+
     @BeforeEach
     public void setUpMockServer() {
         mockServer = MockRestServiceServer.createServer(restTemplate);
@@ -383,22 +411,115 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
+
+        @Test
+        @DisplayName("devuelve error 404 al intentar modificar un activo no existente")
+        void testPutActivoNoExistenteDevuelve404() {
+            // Arrange
+            var activoModificado = new ActivoDTO();
+            activoModificado.setNombre("Activo Modificado");
+            activoModificado.setTipo("tipo2");
+            activoModificado.setTamanio(200);
+            activoModificado.setUrl("http://url2.com");
+            activoModificado.setCategorias(new ArrayList<>());
+            activoModificado.setProductos(List.of(2));
+
+            Integer idNoExistente = 9999;
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + idNoExistente,
+                    tokenAdmin, activoModificado, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(respuestaModificar.getBody()).isNull();
+        }
+
+        @Test
+        @DisplayName("devuelve error 404 al intentar eliminar un activo que no existe")
+        void testEliminarActivoInexistenteDevuelve404() {
+            // Arrange
+            Integer idActivoInexistente = 99999;
+
+            var peticionEliminar = delete("http", "localhost", port, "/activo/" + idActivoInexistente, tokenAdmin);
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(respuestaEliminar.getBody()).isNull();
+        }
     }
 
     @Nested
     @DisplayName("cuando hay activos")
     class HayActivos {
+
+        private Activo activoCuenta1;
+        private Activo activoCuenta2;
+        private Activo activoCuenta3;
+
         @BeforeEach
         public void introduceDatos() {
-            Activo activo = Activo.builder()
+            activoCuenta1 = Activo.builder()
                     .nombre("Manual del televisor")
                     .tipo("PDF")
                     .tamanio(2)
                     .url("https://mallba3.lcc.uma.es/activos/manual-televisor.pdf")
                     .idCuenta(1)
                     .build();
-            activoRepository.save(activo);
+
+            activoRepository.save(activoCuenta1);
+
+            activoCuenta2 = Activo.builder()
+                    .nombre("Manual del televisor")
+                    .tipo("PDF")
+                    .tamanio(2)
+                    .url("https://mallba3.lcc.uma.es/activos/manual-televisor.pdf")
+                    .idCuenta(2)
+                    .build();
+
+            activoRepository.save(activoCuenta2);
+
+            Categoria categoria = new Categoria(null, "Categoría Test", 2, Set.of(activoCuenta2));
+            categoriaRepository.save(categoria);
+
+            activoCuenta2.setCategorias(Set.of(categoria));
+            activoCuenta2.setIdProductos(Set.of(1));
+            activoRepository.save(activoCuenta2);
+
+            activoCuenta3 = Activo.builder()
+                    .nombre("Manual del televisor")
+                    .tipo("PDF")
+                    .tamanio(2)
+                    .url("https://mallba3.lcc.uma.es/activos/manual-televisor.pdf")
+                    .idCuenta(3)
+                    .build();
+
+            activoRepository.save(activoCuenta3);
         }
+
+        @Test
+        @DisplayName("permite crear un nuevo activo si es admin y no se excede el número permitido")
+        public void creaActivoAdmin() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
         @Test
         @DisplayName("permite crear un nuevo activo si se tiene acceso a la cuenta y no se excede el número permitido")
         public void creaActivo() {
@@ -416,6 +537,7 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
             assertThat(respuesta.getBody()).isNotNull();
         }
+
         @Test
         @DisplayName("al intentar crear un nuevo activo devuelve error si no se tiene acceso a la cuenta")
         public void devuelveError() {
@@ -432,6 +554,7 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
+
         @Test
         @DisplayName("devuelve error si se intenta crear un nuevo activo y se excede el número permitido")
         public void devuelveErrorMaxActivos() {
@@ -450,6 +573,213 @@ public class AssetManagementApplicationTests {
                     new ParameterizedTypeReference<ActivoDTO>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
             assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al modificar un activo existente correctamente con el token de admin")
+        void testPutActivoExistenteDevuelve200() {
+            //Arrange
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            var activoModificado = new ActivoDTO();
+            activoModificado.setNombre("Activo Modificado");
+            activoModificado.setTipo("tipo2");
+            activoModificado.setTamanio(200);
+            activoModificado.setUrl("http://url2.com");
+            activoModificado.setCategorias(new ArrayList<>());
+            activoModificado.setProductos(List.of(2));
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + this.activoCuenta1.getId(),
+                    tokenAdmin, activoModificado, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+            var activoDevuelto = respuestaModificar.getBody();
+            assertThat(activoDevuelto).isNotNull();
+            assertThat(activoDevuelto.getNombre()).isEqualTo("Activo Modificado");
+            assertThat(activoDevuelto.getTipo()).isEqualTo("tipo2");
+            assertThat(activoDevuelto.getTamanio()).isEqualTo(200);
+            assertThat(activoDevuelto.getUrl()).isEqualTo("http://url2.com");
+            assertThat(activoDevuelto.getProductos()).containsExactly(2);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al modificar un activo existente correctamente con un token distinto de admin")
+        void testPutActivoExistenteConTokenDistintoDeAdminDevuelve200() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            var activoModificado = new ActivoDTO();
+            activoModificado.setNombre("Activo Modificado");
+            activoModificado.setTipo("tipo2");
+            activoModificado.setTamanio(200);
+            activoModificado.setUrl("http://url2.com");
+            activoModificado.setCategorias(new ArrayList<>());
+            activoModificado.setProductos(List.of(2));
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + this.activoCuenta1.getId(),
+                    tokenAntonio, activoModificado, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+            var activoDevuelto = respuestaModificar.getBody();
+            assertThat(activoDevuelto).isNotNull();
+            assertThat(activoDevuelto.getNombre()).isEqualTo("Activo Modificado");
+            assertThat(activoDevuelto.getTipo()).isEqualTo("tipo2");
+            assertThat(activoDevuelto.getTamanio()).isEqualTo(200);
+            assertThat(activoDevuelto.getUrl()).isEqualTo("http://url2.com");
+            assertThat(activoDevuelto.getProductos()).containsExactly(2);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al modificar un activo con categorías correctamente")
+        public void devuelve200AlModificarActivoConCategorias() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            categoriaRepository.save(new Categoria(null, "Categoría 1", 1, null));
+            categoriaRepository.save(new Categoria(null, "Categoría 2", 1, null));
+            var categoria1 = new CategoriaDTO(1, "Categoría 1");
+            var categoria2 = new CategoriaDTO(2, "Categoría 2");
+
+            var activoModificado = new ActivoDTO();
+            activoModificado.setNombre("Activo Modificado");
+            activoModificado.setTipo("tipo2");
+            activoModificado.setTamanio(200);
+            activoModificado.setUrl("http://url2.com");
+            activoModificado.setCategorias(List.of(categoria1, categoria2));
+            activoModificado.setProductos(List.of(2));
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + this.activoCuenta1.getId(),
+                    tokenAdmin, activoModificado, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+            var activoDevuelto = respuestaModificar.getBody();
+            assertThat(activoDevuelto).isNotNull();
+            assertThat(activoDevuelto.getCategorias()).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("devuelve error 403 al intentar modificar un activo sin permisos")
+        void testPutActivoSinPermisosDevuelve403() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaTres(); // Mock para permisos (Victoria no tiene acceso)
+
+            var activoModificado = new ActivoDTO();
+            activoModificado.setNombre("Intento de modificación");
+            activoModificado.setTipo("tipo2");
+            activoModificado.setTamanio(200);
+            activoModificado.setUrl("http://url2.com");
+            activoModificado.setCategorias(new ArrayList<>());
+            activoModificado.setProductos(List.of(2));
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + this.activoCuenta3.getId(),
+                    tokenVictoria, activoModificado, "idCuenta", List.of(3L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(respuestaModificar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve error 500 al modificar un activo con campos nulos")
+        void testPutActivoConErrorInternoDevuelve500() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            var activoModificado = new ActivoDTO();
+            activoModificado.setNombre(null);
+            activoModificado.setTipo(null);
+            activoModificado.setProductos(null);
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port, "/activo/" + this.activoCuenta1.getId(),
+                    tokenAdmin, activoModificado, "idCuenta", List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, ActivoDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(respuestaModificar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al eliminar un activo existente correctamente")
+        void testDeleteActivoExistenteDevuelve200() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
+            var peticionEliminar = delete("http", "localhost", port, "/activo/" + this.activoCuenta1.getId(), tokenAdmin);
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(respuestaEliminar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve OK 200 al eliminar un activo existente con categorias correctamente")
+        void testDeleteActivoExistenteConCategoriasDevuelve200() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaDos(); // Mock para permisos en DELETE
+            var peticionEliminar = delete("http", "localhost", port, "/activo/" + activoCuenta2.getId(), tokenAdmin);
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(respuestaEliminar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
+        @DisplayName("devuelve error 403 cuando un usuario intenta borrar un activo sobre el que no tiene permisos")
+        void testEliminarActivoSinPermisosDevuelve403() {
+            // Arrange
+            simulaRespuestaUsuariosCuentaTres(); // Mock para permisos (DELETE, Victoria no tiene acceso)
+            var peticionEliminar = delete("http", "localhost", port, "/activo/" + activoCuenta3.getId(), tokenVictoria);
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(respuestaEliminar.getBody()).isNull();
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
         }
     }
 
@@ -493,11 +823,24 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
-        @DisplayName("devuelve una categoría concreta si tiene permiso")
+        @DisplayName("devuelve una categoría concreta si es admin")
         public void devuelveCategoria() {
             simulaRespuestaUsuariosCuentaTres();
             List<Long> idCategoriaValues = List.of(1L);
             var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, "idCategoria", idCategoriaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve una categoría concreta si es un usuario con permiso")
+        public void devuelveCategoriaUsuarioNormal() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCategoriaValues = List.of(1L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAntonio, "idCategoria", idCategoriaValues);
             var respuesta = testRestTemplate.exchange(peticion,
                     new ParameterizedTypeReference<List<CategoriaDTO>>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
@@ -550,7 +893,7 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
-        @DisplayName("devuelve categorías asociadas a una cuenta si se tiene acceso")
+        @DisplayName("devuelve categorías asociadas a una cuenta si es admin")
         public void devuelveCategorias() {
             simulaRespuestaUsuariosCuentaTres();
             List<Long> idCuentaValues = List.of(3L);
@@ -561,6 +904,20 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.hasBody()).isEqualTo(true);
             assertThat(respuesta.getBody()).isNotNull();
         }
+
+        @Test
+        @DisplayName("devuelve categorías asociadas a una cuenta si es un usuario concreto con permiso")
+        public void devuelveCategoriasUsuarioConcreto() {
+            simulaRespuestaUsuariosCuentaTres();
+            List<Long> idCuentaValues = List.of(3L);
+            var peticion = getWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAntonio, "idCuenta", idCuentaValues);
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<List<CategoriaDTO>>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+            assertThat(respuesta.hasBody()).isEqualTo(true);
+            assertThat(respuesta.getBody()).isNotNull();
+        }
+
         @Test
         @DisplayName("devuelve error al intentar acceder a las categorías de una cuenta a la que no se tiene acceso")
         public void devuelveErrorCategoriasCuenta() {
@@ -616,7 +973,6 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getBody()).isNotNull();
         }
     }
-
     @Nested
     @DisplayName("al actualizar una categoría")
     class UpdateCategoriaTests {

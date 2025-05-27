@@ -13,7 +13,6 @@ import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 import com.miniinfomates2003.asset_management.security.SecurityConfguration;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,7 +92,7 @@ public class ActivoService {
         Activo savedActivo = activoRepository.save(activo);
 
         // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
-        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+        if (!activo.getCategorias().isEmpty()) {
             Set<Categoria> categoriasActualizadas = new HashSet<>();
             for (Categoria categoria : activo.getCategorias()) {
                 // Aquí es necesario cargar la categoría desde la base de datos
