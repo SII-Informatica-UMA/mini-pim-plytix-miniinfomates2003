@@ -1013,6 +1013,32 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
+        @DisplayName("devuelve OK 200 al modificar una categoria existente correctamente")
+        void testAntonioPutCategoriaExistenteDevuelve200() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
+
+            var newCategoria = new CategoriaDTO();
+            newCategoria.setNombre("NEW");
+
+            var peticionModificar = putWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoria.getId(), tokenAntonio, newCategoria, "idCuenta",
+                    List.of(1L));
+
+            // Act
+            var respuestaModificar = testRestTemplate.exchange(peticionModificar, CategoriaDTO.class);
+
+            // Assert
+            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(200);
+            var categoriaRespuesta = respuestaModificar.getBody();
+            assertThat(categoriaRespuesta).isNotNull();
+            assertThat(categoriaRespuesta.getNombre()).isEqualTo("NEW");
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
         @DisplayName("devuelve Not Found 404 al intentar modificar una categoria no existente")
         void testPutCategoriaExistenteDevuelve404() {
             // Arrange (modificación)
@@ -1133,6 +1159,31 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
+        @DisplayName("devuelve OK 200 al eliminar una categoria existente correctamente")
+        void testAntonioDeleteCategoriaExistenteDevuelve200() {
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
+
+            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoria.getId(), tokenAntonio, "idCuenta",
+                    List.of(1L));
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode().value()).isEqualTo(200);
+            var categoriaRespuesta = respuestaEliminar.getBody();
+
+            // Comprobamos que se ha eliminado la categoría especificada
+            List<Categoria> categorias = categoriaRepository.findAll();
+            assertThat(categoria).isNotIn(categorias);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
+
+        @Test
         @DisplayName("devuelve Not Found 404 al intentar eliminar una categoria no existente")
         void testPutCategoriaExistenteDevuelve404() {
             // Arrange (modificación)
@@ -1180,7 +1231,36 @@ public class AssetManagementApplicationTests {
             mockServer.verify();
         }
 
-        // NO SE HACE PRUEBA UNITARIA PASANDO POR EL CÓDIGO 500
+        @Test
+        @DisplayName("devuelve Forbidden 403 al intentar eliminar una categoria con activos")
+        void testDeleteCategoriaConActivosDevuelve403() {
+            // Creamos un conjunto de activos
+            Activo activo = new Activo(null, "Activo prueba", "Tipo prueba", 100,
+                    "http://urlprueba.com", Set.of(categoria), Set.of(1), 1);
+            activoRepository.save(activo);
+            Set<Activo> activos = new HashSet<Activo>();
+            activos.add(activo);
+
+            // Creamos la categoría que contendrá al conjunto de activos
+            categoriaSinAcceso = new Categoria(null, "SIN_ACCESO", 3, activos);
+            categoriaRepository.save(categoriaSinAcceso);
+
+            // Arrange (modificación)
+            simulaRespuestaUsuariosCuentaTres(); // Mock para permisos en DELETE
+
+            var peticionEliminar = deleteWithQueryParams("http", "localhost", port,
+                    "/categoria-activo/" + categoriaSinAcceso.getId(), tokenAntonio, "idCuenta",
+                    List.of(3L));
+
+            // Act
+            var respuestaEliminar = testRestTemplate.exchange(peticionEliminar, Void.class);
+
+            // Assert
+            assertThat(respuestaEliminar.getStatusCode().value()).isEqualTo(403);
+
+            // Verificar que los mocks fueron invocados
+            mockServer.verify();
+        }
     }
 
     @Nested
