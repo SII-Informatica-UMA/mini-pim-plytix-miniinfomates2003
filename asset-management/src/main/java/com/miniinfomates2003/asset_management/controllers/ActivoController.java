@@ -112,8 +112,6 @@ public class ActivoController {
             return ResponseEntity.notFound().build();
         } catch (NoAccessException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
