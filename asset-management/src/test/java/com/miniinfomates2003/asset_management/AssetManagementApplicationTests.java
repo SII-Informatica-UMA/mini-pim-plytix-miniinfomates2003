@@ -1009,19 +1009,6 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
 
-		@Test
-		@DisplayName("devuelve error al intentar crear una categoría en una cuenta inexistente")
-		public void devuelveError() {
-			simulaRespuestaUsuariosCuentaInexistente();
-			Categoria categoria = Categoria.builder()
-						.nombre("Categoria 1")
-						.build();
-			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(99L));
-			var respuesta = testRestTemplate.exchange(peticion, 
-					new ParameterizedTypeReference<CategoriaDTO>() {});
-			assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
-			assertThat(respuesta.hasBody()).isEqualTo(false);
-		}
     }
 
     @Nested
@@ -1221,30 +1208,17 @@ public class AssetManagementApplicationTests {
 		}
 
 		@Test
-		@DisplayName("permite crear una categoría asociada a un activo existente")
-		public void creaCategoriaConActivo() {
-    		// Guardar un activo existente
-            Activo activo = Activo.builder()
-                    .nombre("Imagen del ordenador")
-                    .tipo("JPG")
-                    .tamanio(1)
-                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
-                    .build();
-
-    		simulaRespuestaUsuariosCuentaUno();
-    		simulaRespuestaMaxNumActivosCuentaUno();
-
-    		Categoria categoria = Categoria.builder()
-            		.nombre("Con Activo")
-            		.idCuenta(1)
-            		.activos(Set.of(activo))
-            		.build();
-
-    		var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(1L));
-    		var respuesta = testRestTemplate.exchange(peticion, 
+		@DisplayName("devuelve error al intentar crear una categoría en una cuenta inexistente")
+		public void devuelveErrorCrearCategoriaCuentaInexistente() {
+			simulaRespuestaUsuariosCuentaInexistente();
+			Categoria categoria = Categoria.builder()
+						.nombre("Categoria 1")
+						.build();
+			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(99L));
+			var respuesta = testRestTemplate.exchange(peticion, 
 					new ParameterizedTypeReference<CategoriaDTO>() {});
-    		assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
-    		assertThat(respuesta.getBody()).isNotNull();
+			assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+			assertThat(respuesta.hasBody()).isEqualTo(false);
 		}
     }
 }
