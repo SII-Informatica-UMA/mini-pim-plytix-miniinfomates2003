@@ -57,23 +57,8 @@ public class CategoriaService {
         if (maxNumCategorias.equals(numCategoriasActualmente))
             throw new NoAccessException();
 
-        if (categoria.getActivos() == null)
-            categoria.setActivos(new HashSet<>());
         categoria.setId(null);
         Categoria savedCategoria = categoriaRepository.save(categoria);
-
-        if (categoria.getActivos() != null && !categoria.getActivos().isEmpty()) {
-            for (Activo activo : categoria.getActivos()) {
-                Activo managedActivo = activoRepository.findById(activo.getId())
-                        .orElseThrow(NotFoundException::new);
-
-                if (managedActivo.getCategorias() == null)
-                    managedActivo.setCategorias(new HashSet<>());
-
-                managedActivo.getCategorias().add(savedCategoria);
-                activoRepository.save(managedActivo);
-            }
-        }
 
         return savedCategoria;
     }
