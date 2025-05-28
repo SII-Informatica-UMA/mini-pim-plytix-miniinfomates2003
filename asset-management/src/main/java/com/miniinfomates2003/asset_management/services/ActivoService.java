@@ -92,7 +92,7 @@ public class ActivoService {
         Activo savedActivo = activoRepository.save(activo);
 
         // Actualizar la relación bidireccional en Categoria (propietaria de la relacion)
-        if (activo.getCategorias() != null && !activo.getCategorias().isEmpty()) {
+        if (!activo.getCategorias().isEmpty()) {
             Set<Categoria> categoriasActualizadas = new HashSet<>();
             for (Categoria categoria : activo.getCategorias()) {
                 // Aquí es necesario cargar la categoría desde la base de datos
