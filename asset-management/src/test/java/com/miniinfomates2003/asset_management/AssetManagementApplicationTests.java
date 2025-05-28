@@ -1185,7 +1185,7 @@ public class AssetManagementApplicationTests {
 
         @Test
         @DisplayName("devuelve Not Found 404 al intentar eliminar una categoria no existente")
-        void testPutCategoriaExistenteDevuelve404() {
+        void testDeleteCategoriaExistenteDevuelve404() {
             // Arrange (modificación)
             simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en DELETE
 
