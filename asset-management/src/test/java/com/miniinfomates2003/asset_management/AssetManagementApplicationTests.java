@@ -303,6 +303,16 @@ public class AssetManagementApplicationTests {
                         ));
     }
 
+    public void simulaErrorRespuestaMaxNumActivosCuentaUno() {
+        var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
+                .queryParam("idCuenta", 1)
+                .build()
+                .toUri();
+        mockServer.expect(requestTo(uriRemota))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.OK));
+    }
+
     public void aniadeCuatroActivosCuentaUno() {
         Activo activo2 = Activo.builder()
                 .nombre("Activo 2")
@@ -750,6 +760,23 @@ public class AssetManagementApplicationTests {
                     new ParameterizedTypeReference<ActivoDTO>() {});
             assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
             assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve error si hay algún problema al acceder al número máximo de activos permitidos")
+        public void errorCreaActivo() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaErrorRespuestaMaxNumActivosCuentaUno();
+            Activo activo = Activo.builder()
+                    .nombre("Imagen del ordenador")
+                    .tipo("JPG")
+                    .tamanio(1)
+                    .url("https://mallba3.lcc.uma.es/activos/imagen-ordenador.jpg")
+                    .build();
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, activo, "idCuenta", List.of(1L));
+            var respuesta = testRestTemplate.exchange(peticion,
+                    new ParameterizedTypeReference<ActivoDTO>() {});
+            assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
         }
 
         @Test
