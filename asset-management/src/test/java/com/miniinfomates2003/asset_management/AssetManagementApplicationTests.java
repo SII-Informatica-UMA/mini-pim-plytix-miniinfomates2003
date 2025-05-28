@@ -8,6 +8,8 @@ import com.miniinfomates2003.asset_management.entities.Categoria;
 import com.miniinfomates2003.asset_management.repositories.ActivoRepository;
 import com.miniinfomates2003.asset_management.repositories.CategoriaRepository;
 
+import jakarta.transaction.Transactional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,16 +31,12 @@ import org.springframework.web.util.UriBuilderFactory;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 
@@ -340,6 +338,24 @@ public class AssetManagementApplicationTests {
         activoRepository.save(activo5);
     }
 
+	public void aniadeTresCategoriasCuentaUno() {
+		Categoria categoria1 = Categoria.builder()
+					.nombre("Categoria 1")
+					.idCuenta(1)
+					.build();
+		categoriaRepository.save(categoria1);
+		Categoria categoria2 = Categoria.builder()
+					.nombre("Categoria 2")
+					.idCuenta(1)
+					.build();
+		categoriaRepository.save(categoria2);
+		Categoria categoria3 = Categoria.builder()
+					.nombre("Categoria 3")
+					.idCuenta(1)
+					.build();
+		categoriaRepository.save(categoria3);			
+	}
+
     private void simulaRespuestaMaxNumActivosCuentaTres() {
         var uriRemota = UriComponentsBuilder.fromUriString(baseURL + "/cuenta")
                 .queryParam("idCuenta", 3)
@@ -461,6 +477,7 @@ public class AssetManagementApplicationTests {
         private Activo activoCuenta1;
         private Activo activoCuenta2;
         private Activo activoCuenta3;
+        private Categoria categoriaCuenta2;
 
         @BeforeEach
         public void introduceDatos() {
@@ -484,10 +501,10 @@ public class AssetManagementApplicationTests {
 
             activoRepository.save(activoCuenta2);
 
-            Categoria categoria = new Categoria(null, "Categoría Test", 2, Set.of(activoCuenta2));
-            categoriaRepository.save(categoria);
+            categoriaCuenta2 = new Categoria(null, "Categoría Test", 2, Set.of(activoCuenta2));
+            categoriaRepository.save(categoriaCuenta2);
 
-            activoCuenta2.setCategorias(Set.of(categoria));
+            activoCuenta2.setCategorias(Set.of(categoriaCuenta2));
             activoCuenta2.setIdProductos(Set.of(1));
             activoRepository.save(activoCuenta2);
 
@@ -502,6 +519,203 @@ public class AssetManagementApplicationTests {
             activoRepository.save(activoCuenta3);
         }
 
+        @Test
+        @DisplayName("devuelve un activo concreto si es el administrador")
+        public void devuelveActivoAdmin() {
+                simulaRespuestaUsuariosCuentaUno();
+                List<Long> idActivoValues = List.of(1L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idActivo", idActivoValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+		@Test
+        @DisplayName("devuelve un activo concreto si tiene permiso")
+        public void devuelveActivo() {
+                simulaRespuestaUsuariosCuentaUno();
+                List<Long> idActivoValues = List.of(1L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, "idActivo", idActivoValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve error al intentar obtener un activo concreto si no se tiene permiso")
+        public void devuelveErrorActivo() {
+    			simulaRespuestaUsuariosCuentaDos();
+
+   				List<Long> idActivoValues = List.of(2L);
+    			var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAntonio, "idActivo", idActivoValues);
+    			var respuesta = testRestTemplate.exchange(peticion,
+            			new ParameterizedTypeReference<List<ActivoDTO>>() {});
+    
+    			assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+    			assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve activos asociados a una cuenta si es el administrador")
+        public void devuelveActivosPorCuentaAdmin() {
+                simulaRespuestaUsuariosCuentaTres();
+                List<Long> idCuentaValues = List.of(3L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCuenta", idCuentaValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+		@Test
+        @DisplayName("devuelve activos asociados a una cuenta si se tiene acceso")
+        public void devuelveActivosPorCuenta() {
+                simulaRespuestaUsuariosCuentaTres();
+                List<Long> idCuentaValues = List.of(3L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAntonio, "idCuenta", idCuentaValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve error al intentar obtener activos asociados a una cuenta si no se tiene acceso")
+        public void devuelveErrorActivosPorCuenta() {
+                simulaRespuestaUsuariosCuentaTres();
+                List<Long> idCuentaValues = List.of(3L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, "idCuenta", idCuentaValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+                assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+        
+        @Test
+        @DisplayName("devuelve activos asociados a una categoría si es el administrador")
+        public void devuelveActivosPorCategoriaAdmin(){
+                simulaRespuestaUsuariosCuentaDos();
+                List<Long> idCategoriaValues = List.of(categoriaCuenta2.getId().longValue());
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCategoria", idCategoriaValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve activos asociados a una categoría si se tiene acceso")
+        public void devuelveActivosPorCategoria(){
+                simulaRespuestaUsuariosCuentaDos();
+                List<Long> idCategoriaValues = List.of(categoriaCuenta2.getId().longValue());
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, "idCategoria", idCategoriaValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+		@Test
+		@DisplayName("devuelve error al intentar obtener activos asociados a una categoría si no se tiene acceso")
+        public void devuelveErrorActivosPorCategoria(){
+                simulaRespuestaUsuariosCuentaDos();
+                List<Long> idCategoriaValues = List.of(categoriaCuenta2.getId().longValue());
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAntonio, "idCategoria", idCategoriaValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+                assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve activos asociados a un producto si es el administrador")
+        public void devuelveActivosPorProductoAdmin() {
+                simulaRespuestaUsuariosCuentaDos();
+                List<Long> idProductoValues = List.of(1L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idProducto", idProductoValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve activos asociados a un producto si se tiene acceso")
+        public void devuelveActivosPorProducto() {
+                simulaRespuestaUsuariosCuentaDos();
+                List<Long> idProductoValues = List.of(1L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenVictoria, "idProducto", idProductoValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(200);
+                assertThat(respuesta.hasBody()).isEqualTo(true);
+                assertThat(respuesta.getBody()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("devuelve error al intentar obtener activos asociados a un producto si no se tiene acceso")
+        public void devuelveErrorActivosPorProducto() {
+                simulaRespuestaUsuariosCuentaDos();
+                List<Long> idProductoValues = List.of(1L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAntonio, "idProducto", idProductoValues);
+                var respuesta = testRestTemplate.exchange(peticion,
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+                assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve error 404 si el activo no existe y se solicita un activo concreto")
+        public void devuelveErrorActivoNoExiste() {
+                simulaRespuestaUsuariosCuentaUno();
+                List<Long> idActivoValues = List.of(6L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idActivo", idActivoValues);
+                var respuesta = testRestTemplate.exchange(peticion, new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+                assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+		@Test
+        @DisplayName("devuelve error 404 si el activo no existe y se solicita un activo asociado a una categoria")
+        public void devuelveErrorActivoNoExistePorCategoria() {
+                simulaRespuestaUsuariosCuentaUno();
+                List<Long> idCategoriaValues = List.of(6L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idCategoria", idCategoriaValues);
+                var respuesta = testRestTemplate.exchange(peticion, new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+                assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+		@Test
+        @DisplayName("devuelve error 404 si el activo no existe y se solicita un activo asociado a un producto")
+        public void devuelveErrorActivoNoExistePorProducto() {
+                simulaRespuestaUsuariosCuentaUno();
+                List<Long> idProductoValues = List.of(6L);
+                var peticion = getWithQueryParams("http", "localhost", port, "/activo", tokenAdmin, "idProducto", idProductoValues);
+                var respuesta = testRestTemplate.exchange(peticion, new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+                assertThat(respuesta.hasBody()).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("devuelve 400 cuando no se proporciona ningún parámetro en el queryString al obtener un activo")
+        public void devuelveErrorActivoSinParametros() {
+                var peticion = get("http", "localhost", port, "/activo", tokenAdmin);
+                var respuesta = testRestTemplate.exchange(peticion, 
+                        new ParameterizedTypeReference<List<ActivoDTO>>() {});
+                assertThat(respuesta.getStatusCode().value()).isEqualTo(400);
+                assertThat(respuesta.getBody()).isNull();
+        }
+        
         @Test
         @DisplayName("permite crear un nuevo activo si es admin y no se excede el número permitido")
         public void creaActivoAdmin() {
@@ -812,6 +1026,7 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
             assertThat(respuesta.hasBody()).isEqualTo(false);
         }
+
     }
 
     @Nested
@@ -972,6 +1187,84 @@ public class AssetManagementApplicationTests {
             assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
             assertThat(respuesta.getBody()).isNotNull();
         }
+
+        @Test
+        @DisplayName("permite crear una nueva categoria si es admin y no se excede el número permitido")
+        public void creaCategoriaAdmin() {
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+			Categoria categoria = Categoria.builder()
+						.nombre("Manuales")
+						.id(1)
+						.build();
+			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenAdmin, categoria, "idCuenta", List.of(1L));
+			var respuesta = testRestTemplate.exchange(peticion, 
+					new ParameterizedTypeReference<CategoriaDTO>() {});
+			assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+			assertThat(respuesta.getBody()).isNotNull();
+        }
+
+		@Test
+		@DisplayName("permite crear una nueva categoria si se tiene acceso a la cuenta y no se excede el número permitido")
+		public void creaCategoria() {
+			simulaRespuestaUsuariosCuentaUno();
+			simulaRespuestaMaxNumActivosCuentaUno();
+			Categoria categoria = Categoria.builder()
+						.nombre("Manuales")
+						.id(1)
+						.build();
+			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(1L));
+			var respuesta = testRestTemplate.exchange(peticion, 
+					new ParameterizedTypeReference<CategoriaDTO>() {});
+			assertThat(respuesta.getStatusCode().value()).isEqualTo(201);
+			assertThat(respuesta.getBody()).isNotNull();			
+		}
+
+		@Test
+		@DisplayName("al intentar crear una nueva categoria devuelve error si no se tiene acceso a la cuenta")
+		public void devuelveErrorNoAcceso() {
+			simulaRespuestaUsuariosCuentaTres();
+			Categoria categoria = Categoria.builder()
+						.nombre("Manuales")
+						.id(1)
+						.build();
+			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(3L));
+			var respuesta = testRestTemplate.exchange(peticion, 
+					new ParameterizedTypeReference<CategoriaDTO>() {});
+			assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+			assertThat(respuesta.hasBody()).isEqualTo(false);	
+		}
+
+		@Test
+		@DisplayName("devuelve error si se intenta crear una nueva categoria y se excede el número permitido")
+		public void devuelveErrorMaxCategorias() {
+			aniadeTresCategoriasCuentaUno();
+			simulaRespuestaUsuariosCuentaUno();
+			simulaRespuestaMaxNumActivosCuentaUno();
+			Categoria categoria = Categoria.builder()
+						.nombre("Manuales")
+						.id(1)
+						.build();
+			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(1L));
+			var respuesta = testRestTemplate.exchange(peticion, 
+					new ParameterizedTypeReference<CategoriaDTO>() {});
+			assertThat(respuesta.getStatusCode().value()).isEqualTo(403);
+			assertThat(respuesta.hasBody()).isEqualTo(false);			
+		}
+
+		@Test
+		@DisplayName("devuelve error al intentar crear una categoría en una cuenta inexistente")
+		public void devuelveErrorCrearCategoriaCuentaInexistente() {
+			simulaRespuestaUsuariosCuentaInexistente();
+			Categoria categoria = Categoria.builder()
+						.nombre("Categoria 1")
+						.build();
+			var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo", tokenVictoria, categoria, "idCuenta", List.of(99L));
+			var respuesta = testRestTemplate.exchange(peticion, 
+					new ParameterizedTypeReference<CategoriaDTO>() {});
+			assertThat(respuesta.getStatusCode().value()).isEqualTo(404);
+			assertThat(respuesta.hasBody()).isEqualTo(false);
+		}
     }
     @Nested
     @DisplayName("al actualizar una categoría")
