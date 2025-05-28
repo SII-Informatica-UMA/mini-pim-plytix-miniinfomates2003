@@ -763,6 +763,27 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
+        @DisplayName("devuelve error 500 al crear un activo con campos nulos")
+        void testError500CrearActivo() {
+
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+
+            var activo = new ActivoDTO();
+            activo.setNombre(null);
+            activo.setTipo(null);
+            activo.setProductos(null);
+
+            var peticion = postWithQueryParams("http", "localhost", port, "/activo" ,
+                    tokenAdmin, activo, "idCuenta", List.of(1L));
+
+            var respuestaModificar = testRestTemplate.exchange(peticion, ActivoDTO.class);
+
+            assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(respuestaModificar.getBody()).isNull();
+        }
+
+        @Test
         @DisplayName("devuelve error si hay algún problema al acceder al número máximo de activos permitidos")
         public void errorCreaActivo() {
             simulaRespuestaUsuariosCuentaUno();
@@ -1248,6 +1269,27 @@ public class AssetManagementApplicationTests {
 		}
 
         @Test
+        @DisplayName("devuelve error 500 al crear una nueva categoría con campos nulos")
+        void testError500CrearCategoria() {
+
+            simulaRespuestaUsuariosCuentaUno();
+            simulaRespuestaMaxNumActivosCuentaUno();
+
+            var categoria = new ActivoDTO();
+            categoria.setNombre(null);
+            categoria.setTipo(null);
+            categoria.setProductos(null);
+
+            var peticion = postWithQueryParams("http", "localhost", port, "/categoria-activo" ,
+                    tokenAdmin, categoria, "idCuenta", List.of(1L));
+
+            var respuesta = testRestTemplate.exchange(peticion, CategoriaDTO.class);
+
+            assertThat(respuesta.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(respuesta.getBody()).isNull();
+        }
+
+        @Test
         @DisplayName("al crear una nueva categoría devuelve error si no se pueden obtener correctamente el máximo número permitido")
         public void errorCreaCategoria() {
             simulaRespuestaUsuariosCuentaUno();
@@ -1374,6 +1416,24 @@ public class AssetManagementApplicationTests {
         }
 
         @Test
+        @DisplayName("devuelve error 500 al modificar una categoria con campos nulos")
+        void testError500CrearActivo() {
+
+            simulaRespuestaUsuariosCuentaUno();
+
+            var categoria = new ActivoDTO();
+            categoria.setNombre(null);
+
+            var peticion = putWithQueryParams("http", "localhost", port, "/categoria-activo/1" ,
+                    tokenAdmin, categoria, "idCuenta", List.of(1L));
+
+            var respuestaModificar = testRestTemplate.exchange(peticion, CategoriaDTO.class);
+
+            assertThat(respuestaModificar.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(respuestaModificar.getBody()).isNull();
+        }
+
+        @Test
         @DisplayName("devuelve Not Found 404 al intentar modificar una categoria no existente")
         void testPutCategoriaExistenteDevuelve404() {
             // Arrange (modificación)
@@ -1425,30 +1485,6 @@ public class AssetManagementApplicationTests {
 
             // Assert
             assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(403);
-            assertThat(respuestaModificar.getBody()).isNull();
-
-            // Verificar que los mocks fueron invocados
-            mockServer.verify();
-        }
-
-        @Test
-        @DisplayName("devuelve Internal Server Error 500 al intentar modificar una categoria")
-        void testPutCategoriaDevuelve500() {
-            // Arrange (modificación)
-            simulaRespuestaUsuariosCuentaUno(); // Mock para permisos en PUT
-
-            var newCategoria = new CategoriaDTO();
-            newCategoria.setNombre(null);
-
-            var peticionModificar = putWithQueryParams("http", "localhost", port,
-                    "/categoria-activo/" + categoria.getId(), tokenAdmin, newCategoria,
-                    "idCuenta", List.of(1L));
-
-            // Act
-            var respuestaModificar = testRestTemplate.exchange(peticionModificar, CategoriaDTO.class);
-
-            // Assert
-            assertThat(respuestaModificar.getStatusCode().value()).isEqualTo(500);
             assertThat(respuestaModificar.getBody()).isNull();
 
             // Verificar que los mocks fueron invocados
